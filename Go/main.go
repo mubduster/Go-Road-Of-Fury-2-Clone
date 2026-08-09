@@ -1,6 +1,8 @@
 package main
 
 import (
+	"math/rand/v2"
+
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
 
@@ -23,10 +25,18 @@ type Ground struct {
 	Pos     rl.Vector2
 	Texture rl.Texture2D
 }
+type CactusTextures struct {
+	Texture rl.Texture2D
+}
+type WorldCactus struct {
+	Pos     rl.Vector2
+	Texture rl.Texture2D
+}
 
 var RoadSpeed int = 70
 var Timer float32 = 0.0
 var Offset float32 = 0
+var BG1Offset float32 = 0
 var dT float32 = 0.0
 
 func main() {
@@ -55,6 +65,12 @@ func main() {
 	RoadTexture := rl.LoadTexture("./Textures/Road.png")
 	BackGround1 := rl.LoadTexture("./Textures/Background1.png")
 
+	CactusTextures := []CactusTextures{
+		{Texture: rl.LoadTexture("./Textures/Cactus/Cactus1.png")},
+		{Texture: rl.LoadTexture("./Textures/Cactus/Cactus1.png")},
+	}
+	Cactus := []WorldCactus{}
+
 	Roads := []Ground{
 		{Pos: rl.NewVector2(0, World.Y-1900), Texture: RoadTexture},
 		{Pos: rl.NewVector2(1920*5, World.Y-1900), Texture: RoadTexture},
@@ -67,7 +83,7 @@ func main() {
 		{Pos: rl.NewVector2(1920*5, World.Y-2300), Texture: BackGround1},
 		{Pos: rl.NewVector2(1920*10, World.Y-2300), Texture: BackGround1},
 		{Pos: rl.NewVector2(1920*15, World.Y-2300), Texture: BackGround1},
-	}		
+	}
 
 	for !rl.WindowShouldClose() {
 
@@ -80,8 +96,13 @@ func main() {
 		}
 
 		Offset -= float32(RoadSpeed)
-		if Offset <= -(1920*4*5){
+		BG1Offset -= float32(RoadSpeed) / 1.3
+
+		if Offset <= -(1920 * 4 * 5) {
 			Offset = 0
+		}
+		if BG1Offset <= -(1920 * 4 * 5) {
+			BG1Offset = 0
 		}
 
 		rl.BeginDrawing()
@@ -92,23 +113,9 @@ func main() {
 		rl.DrawRectangleV(rl.NewVector2(0, 0), rl.Vector2(World), rl.SkyBlue)
 		rl.DrawRectangleV(Car1.Pos, Car1.Size, rl.Red)
 
-		DrawGround(Background1s, World, Offset)
+		DrawGround(Background1s, BG1Offset) // Render Background 1
 
-		// Roads -------------------------------------------------------------------------------------------------
-		rl.DrawTextureEx(RoadTexture, rl.NewVector2(0, World.Y-1900), 0.0, 5, rl.White)
-		rl.DrawTextureEx(RoadTexture, rl.NewVector2(1920*5, World.Y-1900), 0.0, 5, rl.White)
-		for i := 0; i < len(Roads); {
-			if Roads[i].Pos.X > -1920*5 {
-				rl.DrawTextureEx(Roads[i].Texture, Roads[i].Pos, 0.0, 5, rl.White)
-				Roads[i].Pos.X -= float32(RoadSpeed)
-			} else {
-				Roads[i].Pos.X = World.X
-				rl.DrawTextureEx(Roads[i].Texture, Roads[i].Pos, 0.0, 5, rl.White)
-				Roads[i].Pos.X -= float32(RoadSpeed)
-			}
-			i++
-		}
-		//--------------------------------------------------------------------------------------------------------
+		DrawGround(Roads, Offset) // Render Road
 
 		rl.EndMode2D()
 
@@ -119,23 +126,30 @@ func main() {
 
 }
 
-func DrawGround (Ground []Ground, World World, Offset float32) {
-	TotalLength := 1920*5*4
+func DrawGround(Ground []Ground, Offset float32) {
+	TotalLength := 1920 * 5 * 4
 
-	for i,G := range Ground {
-		Rect := rl.Rectangle{Width: 1920*5, Height: 185*5}
-		Rect.Y = World.Y-2300
-		Rect.X = float32(i*1920*5) + Offset
-
-		rl.DrawTextureRec(G.Texture, Rect, rl.NewVector2(Rect.X, Rect.Y), rl.White)
+	for i, G := range Ground {
+		G.Pos.X = float32(i*1920*5) + Offset
+		rl.DrawTextureEx(G.Texture, rl.NewVector2(G.Pos.X, G.Pos.Y), 0.0, 5, rl.White)
 	}
 
-	for i,G := range Ground {
-		Rect := rl.Rectangle{Width: 1920*5, Height: 185*5}
-		Rect.Y = World.Y-2300
-		Rect.X = float32(i*1920*5)+Offset+float32(TotalLength)
-
-		rl.DrawTextureRec(G.Texture, Rect, rl.NewVector2(Rect.X, Rect.Y), rl.White)
+	for i, G := range Ground {
+		G.Pos.X = float32(i*1920*5) + Offset + float32(TotalLength)
+		rl.DrawTextureEx(G.Texture, rl.NewVector2(G.Pos.X, G.Pos.Y), 0.0, 5, rl.White)
 	}
 
+}
+
+func DrawCactus(Cactus []WorldCactus, TextureList []CactusTextures, Offset float32, World World) {
+	Roll := rand.IntN(100)
+
+	if len(Cactus)-1 < 4 {
+		if Roll > 75 {
+			Cactus = append(Cactus, WorldCactus{Pos: rl.NewVector2(World.X+rand.Float32()*100, World.Y-(float32(1930)+rand.Float32()*370)), Texture: TextureList[rand.IntN(1)].Texture})
+		}
+	}
+	if len(Cactus) != 0 {
+		
+	}
 }
