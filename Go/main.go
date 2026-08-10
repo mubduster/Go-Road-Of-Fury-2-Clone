@@ -1,7 +1,6 @@
 package main
 
 import (
-	"math/rand/v2"
 
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
@@ -33,10 +32,11 @@ type WorldCactus struct {
 	Texture rl.Texture2D
 }
 
-var RoadSpeed int = 70
+var RoadSpeed int = 200
 var Timer float32 = 0.0
 var Offset float32 = 0
 var BG1Offset float32 = 0
+var BG2Offset float32 = 0
 var dT float32 = 0.0
 
 func main() {
@@ -64,12 +64,7 @@ func main() {
 
 	RoadTexture := rl.LoadTexture("./Textures/Road.png")
 	BackGround1 := rl.LoadTexture("./Textures/Background1.png")
-
-	CactusTextures := []CactusTextures{
-		{Texture: rl.LoadTexture("./Textures/Cactus/Cactus1.png")},
-		{Texture: rl.LoadTexture("./Textures/Cactus/Cactus1.png")},
-	}
-	Cactus := []WorldCactus{}
+	BackGround2 := rl.LoadTexture("./Textures/Background2.png")
 
 	Roads := []Ground{
 		{Pos: rl.NewVector2(0, World.Y-1900), Texture: RoadTexture},
@@ -79,10 +74,16 @@ func main() {
 	}
 
 	Background1s := []Ground{
-		{Pos: rl.NewVector2(0, World.Y-2300), Texture: BackGround1},
-		{Pos: rl.NewVector2(1920*5, World.Y-2300), Texture: BackGround1},
-		{Pos: rl.NewVector2(1920*10, World.Y-2300), Texture: BackGround1},
-		{Pos: rl.NewVector2(1920*15, World.Y-2300), Texture: BackGround1},
+		{Pos: rl.NewVector2(0, World.Y-2700), Texture: BackGround1},
+		{Pos: rl.NewVector2(1920*5, World.Y-2700), Texture: BackGround1},
+		{Pos: rl.NewVector2(1920*10, World.Y-2700), Texture: BackGround1},
+		{Pos: rl.NewVector2(1920*15, World.Y-2700), Texture: BackGround1},
+	}
+	Background2s := []Ground{
+		{Pos:rl.NewVector2(0, 2000), Texture: BackGround2},
+		{Pos:rl.NewVector2(1920*5, 2000), Texture: BackGround2},
+		{Pos:rl.NewVector2(1920*10, 2000), Texture: BackGround2},
+		{Pos:rl.NewVector2(1920*15, 2000), Texture: BackGround2},
 	}
 
 	for !rl.WindowShouldClose() {
@@ -97,12 +98,16 @@ func main() {
 
 		Offset -= float32(RoadSpeed)
 		BG1Offset -= float32(RoadSpeed) / 1.3
+		BG2Offset -= float32(RoadSpeed) / 2.5
 
 		if Offset <= -(1920 * 4 * 5) {
 			Offset = 0
 		}
 		if BG1Offset <= -(1920 * 4 * 5) {
 			BG1Offset = 0
+		}
+		if BG2Offset <= -(1920 * 4 * 5) {
+			BG2Offset = 0
 		}
 
 		rl.BeginDrawing()
@@ -113,9 +118,13 @@ func main() {
 		rl.DrawRectangleV(rl.NewVector2(0, 0), rl.Vector2(World), rl.SkyBlue)
 		rl.DrawRectangleV(Car1.Pos, Car1.Size, rl.Red)
 
+		DrawGround(Background2s, BG2Offset)
+
 		DrawGround(Background1s, BG1Offset) // Render Background 1
 
 		DrawGround(Roads, Offset) // Render Road
+
+		// rl.DrawTextureEx(CactusTextures[0].Texture, rl.NewVector2(1000, 3500), 0.0, 3.4, rl.White)
 
 		rl.EndMode2D()
 
@@ -139,17 +148,4 @@ func DrawGround(Ground []Ground, Offset float32) {
 		rl.DrawTextureEx(G.Texture, rl.NewVector2(G.Pos.X, G.Pos.Y), 0.0, 5, rl.White)
 	}
 
-}
-
-func DrawCactus(Cactus []WorldCactus, TextureList []CactusTextures, Offset float32, World World) {
-	Roll := rand.IntN(100)
-
-	if len(Cactus)-1 < 4 {
-		if Roll > 75 {
-			Cactus = append(Cactus, WorldCactus{Pos: rl.NewVector2(World.X+rand.Float32()*100, World.Y-(float32(1930)+rand.Float32()*370)), Texture: TextureList[rand.IntN(1)].Texture})
-		}
-	}
-	if len(Cactus) != 0 {
-		
-	}
 }
