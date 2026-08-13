@@ -26,9 +26,11 @@ type Ground struct {
 	Texture rl.Texture2D
 }
 type Cloud struct {
-	Pos rl.Vector2
+	Pos     rl.Vector2
 	Texture rl.Texture2D
-	Scale float32
+	Scale   float32
+	Offset  float32
+	RandSpeed float32
 }
 type CactusTextures struct {
 	Texture rl.Texture2D
@@ -38,13 +40,14 @@ type WorldCactus struct {
 	Texture rl.Texture2D
 }
 
-var RoadSpeed int = 200
+var RoadSpeed float32 = 200
 var Timer float32 = 0.0
 var Offset float32 = 0
 var BG1Offset float32 = 0
 var BG2Offset float32 = 0
 var BG3Offset float32 = 0
 var SkyOffset float32 = 0
+var CloudTimer float32 = 0
 var dT float32 = 0.0
 
 func main() {
@@ -74,8 +77,8 @@ func main() {
 	BackGround1 := rl.LoadTexture("./Textures/Background1.png")
 	BackGround2 := rl.LoadTexture("./Textures/Background2.png")
 	BackGround3 := rl.LoadTexture("./Textures/Background3.png")
-	SkyTexture := rl.LoadTexture("./Textures/Sky.png")  
-	CloudTexture := rl.LoadTexture("./Textures/Cloud.png") //542, 163
+	SkyTexture := rl.LoadTexture("./Textures/Sky.png")
+	CloudTexture := rl.LoadTexture("./Textures/Cloud.png") 
 
 	Roads := []Ground{
 		{Pos: rl.NewVector2(0, World.Y-1900), Texture: RoadTexture},
@@ -103,13 +106,13 @@ func main() {
 		{Pos: rl.NewVector2(1920*15, 500), Texture: BackGround3},
 	}
 	Skys := []Ground{
-		{Pos: rl.NewVector2(0,-200), Texture: SkyTexture},
-		{Pos: rl.NewVector2(1920*5,-200), Texture: SkyTexture},
-		{Pos: rl.NewVector2(1920*10,-200), Texture: SkyTexture},
-		{Pos: rl.NewVector2(1920*15,-200), Texture: SkyTexture},
+		{Pos: rl.NewVector2(0, -200), Texture: SkyTexture},
+		{Pos: rl.NewVector2(1920*5, -200), Texture: SkyTexture},
+		{Pos: rl.NewVector2(1920*10, -200), Texture: SkyTexture},
+		{Pos: rl.NewVector2(1920*15, -200), Texture: SkyTexture},
 	}
-	Clouds := []Cloud {
-		{Pos: rl.NewVector2(World.X - 3000, 0), Texture: CloudTexture},
+	Clouds := []Cloud{
+		{Pos: rl.NewVector2(World.X-3000, 0), Texture: CloudTexture},
 	}
 
 	for !rl.WindowShouldClose() {
@@ -122,16 +125,11 @@ func main() {
 			Timer = 0.0
 		}
 
-		Offset -= float32(RoadSpeed)
-		BG1Offset -= float32(RoadSpeed) / 1.3
-		BG2Offset -= float32(RoadSpeed) / 2.5
-		BG3Offset -= float32(RoadSpeed) / 5.5
-		SkyOffset -= float32(RoadSpeed) / 15
-
-		Roll := rand.IntN(100)
-		if Roll > 90 {
-			Clouds = append(Clouds, Cloud{Pos: rl.NewVector2(World.X, rand.Float32()*200), Texture: CloudTexture, Scale: 1+rand.Float32()*4})
-		}
+		Offset -= RoadSpeed
+		BG1Offset -= RoadSpeed / 1.3
+		BG2Offset -= RoadSpeed / 2.5
+		BG3Offset -= RoadSpeed / 5.5
+		SkyOffset -= RoadSpeed / 15
 
 		if Offset <= -(1920 * 4 * 5) {
 			Offset = 0
@@ -142,20 +140,14 @@ func main() {
 		if BG2Offset <= -(1920 * 4 * 5) {
 			BG2Offset = 0
 		}
-		if BG3Offset <= -(1920*4*5) {
+		if BG3Offset <= -(1920 * 4 * 5) {
 			BG3Offset = 0
 		}
-		if SkyOffset <= -(1920*4*5) {
+		if SkyOffset <= -(1920 * 4 * 5) {
 			SkyOffset = 0
 		}
-		
-		for i,C := range Clouds {
-			if C.Pos.X < -542 {
-				Clouds[i] = Clouds[len(Clouds)-1]
-				Clouds = Clouds[:len(Clouds)-1]
-			}
-			Clouds[i].Pos.X = float32(i*542*int(C.Scale)) + SkyOffset+ 10 
-		}
+
+		Clouds = CreateClouds(Clouds, CloudTexture, RoadSpeed, World)
 
 		rl.BeginDrawing()
 		rl.ClearBackground(rl.Blue)
@@ -167,10 +159,8 @@ func main() {
 
 		DrawGround(Skys, SkyOffset)
 
-		
 		DrawGround(Background3s, BG3Offset)
 		DrawClouds(Clouds)
-		rl.DrawTextureEx(Clouds[0].Texture, Clouds[0].Pos, 0.0, 5, rl.White)
 
 		DrawGround(Background2s, BG2Offset)
 
@@ -187,6 +177,7 @@ func main() {
 
 }
 
+// Creates a Moving Foreground or Background depending on the order of use.
 func DrawGround(Ground []Ground, Offset float32) {
 	TotalLength := 1920 * 5 * 4
 
@@ -202,10 +193,37 @@ func DrawGround(Ground []Ground, Offset float32) {
 
 }
 
-func DrawClouds(Clouds []Cloud) {
-	for _,C := range Clouds {
-		rl.DrawTextureEx(C.Texture, C.Pos, 0.0, 1+rand.Float32()*4, rl.White)
+// Creates and adds Clouds to a list that it also moves, and also removes them. Retuns a Slice of type Struct Cloud.
+func CreateClouds(Clouds []Cloud, Texture rl.Texture2D, RoadSpeed float32, World World) []Cloud {
+	Roll := rand.IntN(100)
+	if Roll > 95 && CloudTimer <= 0 && len(Clouds) < 4{
+		Clouds = append(Clouds, Cloud{Pos: rl.NewVector2(World.X, rand.Float32()*200), Texture: Texture, Scale: 1 + rand.Float32()*4, Offset: 0, RandSpeed: rand.Float32()*100})
+		CloudTimer = 3
 	}
+
+	for i := 0; i < len(Clouds)-1; {
+		Clouds[i].Offset -= float32(RoadSpeed) / 12
+		// if Clouds[i].Offset <= -float32(i*1920*len(Clouds)*int(Clouds[i].Scale)) {
+		if Clouds[i].Offset <= -float32(9542*Clouds[i].Scale) {
+			Clouds[i].Offset = 0
+		}
+		if Clouds[i].Pos.X < -542 {
+			Clouds[i] = Clouds[len(Clouds)-1]
+			Clouds = Clouds[:len(Clouds)-1]
+		}
+		Clouds[i].Pos.X = float32(9542*int(Clouds[i].Scale)) + Clouds[i].Offset + Clouds[i].RandSpeed
+		i++
+	}
+	
+	if CloudTimer >= 0 {
+		CloudTimer -= dT
+	}
+	return Clouds
 }
 
-
+// It's only job is to render the Clouds from the Clouds Slice lol.
+func DrawClouds(Clouds []Cloud) {
+	for _, C := range Clouds {
+		rl.DrawTextureEx(C.Texture, C.Pos, 0.0, C.Scale, rl.White)
+	}
+}
