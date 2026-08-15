@@ -15,21 +15,24 @@ type World struct {
 	Y float32
 }
 type Car struct {
-	Pos    rl.Vector2
-	Size   rl.Vector2
-	Health float32
-	Power  int
-	Weapon int
+	Pos           rl.Vector2
+	Texture       rl.Texture2D
+	Health        float32
+	Power         int
+	PowerTime     float32
+	PowerCooldown float32
+	Weapon        int
+	Scale         float32
 }
 type Ground struct {
 	Pos     rl.Vector2
 	Texture rl.Texture2D
 }
 type Cloud struct {
-	Pos     rl.Vector2
-	Texture rl.Texture2D
-	Scale   float32
-	Offset  float32
+	Pos       rl.Vector2
+	Texture   rl.Texture2D
+	Scale     float32
+	Offset    float32
 	RandSpeed float32
 }
 type CactusTextures struct {
@@ -41,14 +44,16 @@ type WorldCactus struct {
 }
 
 var RoadSpeed float32 = 200
-var Timer float32 = 0.0
-var Offset float32 = 0
-var BG1Offset float32 = 0
-var BG2Offset float32 = 0
-var BG3Offset float32 = 0
-var SkyOffset float32 = 0
-var CloudTimer float32 = 0
-var dT float32 = 0.0
+var Timer float32
+var Offset float32
+var BG1Offset float32
+var BG2Offset float32
+var BG3Offset float32
+var SkyOffset float32
+var CloudTimer float32
+var Car1OffsetX float32
+var Car1OffsetTimer float32
+var dT float32
 
 func main() {
 	rl.SetConfigFlags(rl.FlagWindowResizable | rl.FlagWindowMaximized)
@@ -61,24 +66,17 @@ func main() {
 
 	World := World{X: 11290, Y: 6000}
 
-	Car1 := Car{
-		Pos:    rl.NewVector2(World.X, World.Y),
-		Size:   rl.NewVector2(400, 300),
-		Health: 100,
-		Power:  1,
-		Weapon: 1,
-	}
-
 	Camera := rl.Camera2D{Offset: rl.NewVector2(Screen.X/2, Screen.Y/2), Target: rl.NewVector2(World.X/2, World.Y/2), Rotation: 0, Zoom: 0.17}
 
 	Car_Hud := rl.LoadTexture("./Textures/Car_Hud_Texture.png")
+	Car1_Texture := rl.LoadTexture("./Textures/car1.png")
 
 	RoadTexture := rl.LoadTexture("./Textures/Road.png")
 	BackGround1 := rl.LoadTexture("./Textures/Background1.png")
 	BackGround2 := rl.LoadTexture("./Textures/Background2.png")
 	BackGround3 := rl.LoadTexture("./Textures/Background3.png")
 	SkyTexture := rl.LoadTexture("./Textures/Sky.png")
-	CloudTexture := rl.LoadTexture("./Textures/Cloud.png") 
+	CloudTexture := rl.LoadTexture("./Textures/Cloud.png")
 
 	Roads := []Ground{
 		{Pos: rl.NewVector2(0, World.Y-1900), Texture: RoadTexture},
@@ -115,6 +113,8 @@ func main() {
 		{Pos: rl.NewVector2(World.X-3000, 0), Texture: CloudTexture},
 	}
 
+	Car1 := Car{Pos: rl.NewVector2(-194, World.Y-2200), Texture: Car1_Texture, Health: 600, Power: Nulifier, PowerTime: 10, PowerCooldown: 0.0, Weapon: Minigun, Scale: 5}
+
 	for !rl.WindowShouldClose() {
 
 		dT = rl.GetFrameTime()
@@ -147,7 +147,46 @@ func main() {
 			SkyOffset = 0
 		}
 
-		Clouds = CreateClouds(Clouds, CloudTexture, RoadSpeed, World)
+		// Car Random Movement Timer -------------------------------------------------------------------------------------------------
+		if Car1OffsetTimer <= 0 {
+			Roll := rand.IntN(2)
+			if Roll == 0 {
+				Car1OffsetX = rand.Float32() * float32(rand.IntN(101)+5) * Car1.Scale
+			} else {
+				Car1OffsetX = -rand.Float32() * float32(rand.IntN(101)+5) * Car1.Scale
+			}
+			Car1OffsetTimer = 4 + rand.Float32()*12
+		} else {
+			Car1OffsetTimer -= dT
+		}
+		//-----------------------------------------------------------------------------------------------------------------------------
+
+		// Car Random Movement Handler ------------------------------------------------------------------------------------------------
+		switch {
+		case Car1OffsetX > 0:
+			Car1.Pos.X += 0.5 * Car1.Scale
+			Car1OffsetX -= 0.5 * Car1.Scale
+			if Car1OffsetX < 0 {
+				Car1OffsetX = 0
+			}
+		case Car1OffsetX < 0:
+			Car1.Pos.X -= 0.5 * Car1.Scale
+			Car1OffsetX += 0.5 * Car1.Scale
+			if Car1OffsetX > 0 {
+				Car1OffsetX = 0
+			}
+		}
+		//------------------------------------------------------------------------------------------------------------------------------
+
+		// Stops car from going offscreen ----------------------------------------------------------------------------------------------
+		if Car1OffsetX == 0 && Car1.Pos.X < 0 {
+			Car1OffsetX = -Car1.Pos.X
+		} else if Car1OffsetX == 0 && Car1.Pos.X > 2000 {
+			Car1OffsetX = -Car1.Pos.X
+		}
+		//------------------------------------------------------------------------------------------------------------------------------
+
+		Clouds = CreateClouds(Clouds, CloudTexture, RoadSpeed, World) // BROKEN STUFF AAAAHHHHH
 
 		rl.BeginDrawing()
 		rl.ClearBackground(rl.Blue)
@@ -155,18 +194,19 @@ func main() {
 		rl.BeginMode2D(Camera)
 
 		rl.DrawRectangleV(rl.NewVector2(0, 0), rl.Vector2(World), rl.SkyBlue)
-		rl.DrawRectangleV(Car1.Pos, Car1.Size, rl.Red)
 
 		DrawGround(Skys, SkyOffset)
 
+		DrawClouds(Clouds) // --------------------------------------------------------------------------- FIX CLOUDS PLZ ---------------------------------------------------------------------------------------------------------
 		DrawGround(Background3s, BG3Offset)
-		DrawClouds(Clouds)
 
 		DrawGround(Background2s, BG2Offset)
 
 		DrawGround(Background1s, BG1Offset) // Render Background 1
 
 		DrawGround(Roads, Offset) // Render Road
+
+		rl.DrawTextureEx(Car1.Texture, Car1.Pos, 0.0, Car1.Scale, rl.White)
 
 		rl.EndMode2D()
 
@@ -196,15 +236,17 @@ func DrawGround(Ground []Ground, Offset float32) {
 // Creates and adds Clouds to a list that it also moves, and also removes them. Retuns a Slice of type Struct Cloud.
 func CreateClouds(Clouds []Cloud, Texture rl.Texture2D, RoadSpeed float32, World World) []Cloud {
 	Roll := rand.IntN(100)
-	if Roll > 95 && CloudTimer <= 0 && len(Clouds) < 4{
-		Clouds = append(Clouds, Cloud{Pos: rl.NewVector2(World.X, rand.Float32()*200), Texture: Texture, Scale: 1 + rand.Float32()*4, Offset: 0, RandSpeed: rand.Float32()*100})
+	if Roll > 95 && CloudTimer <= 0 && len(Clouds) < 4 {
+		Scale := 1 + rand.Float32()*4
+		Clouds = append(Clouds, Cloud{Pos: rl.NewVector2(World.X+542*Scale, rand.Float32()*200), Texture: Texture, Scale: Scale, Offset: 0, RandSpeed: rand.Float32() * 100})
 		CloudTimer = 3
 	}
 
 	for i := 0; i < len(Clouds)-1; {
 		Clouds[i].Offset -= float32(RoadSpeed) / 12
 		// if Clouds[i].Offset <= -float32(i*1920*len(Clouds)*int(Clouds[i].Scale)) {
-		if Clouds[i].Offset <= -float32(9542*Clouds[i].Scale) {
+		// if Clouds[i].Offset <= -float32(i*int(World.X)*len(Clouds))*2*(542* Clouds[i].Scale) {
+		if Clouds[i].Offset <= -float32(1920*6*Clouds[i].Scale) {
 			Clouds[i].Offset = 0
 		}
 		if Clouds[i].Pos.X < -542 {
@@ -214,7 +256,7 @@ func CreateClouds(Clouds []Cloud, Texture rl.Texture2D, RoadSpeed float32, World
 		Clouds[i].Pos.X = float32(9542*int(Clouds[i].Scale)) + Clouds[i].Offset + Clouds[i].RandSpeed
 		i++
 	}
-	
+
 	if CloudTimer >= 0 {
 		CloudTimer -= dT
 	}
@@ -226,4 +268,20 @@ func DrawClouds(Clouds []Cloud) {
 	for _, C := range Clouds {
 		rl.DrawTextureEx(C.Texture, C.Pos, 0.0, C.Scale, rl.White)
 	}
+}
+
+func RandCarMovementTimer(CarOffsetTimer, CarOffsetX float32, Car Car) (float32, float32) {
+	if CarOffsetTimer <= 0 {
+		Roll := rand.IntN(2)
+		if Roll == 0 {
+			CarOffsetX = rand.Float32() * float32(rand.IntN(101)+5) * Car.Scale
+		} else {
+			CarOffsetX = -rand.Float32() * float32(rand.IntN(101)+5) * Car.Scale
+		}
+		Car1OffsetTimer = 4 + rand.Float32()*12
+	} else {
+		Car1OffsetTimer -= dT
+	}
+
+	return CarOffsetTimer, CarOffsetX
 }
