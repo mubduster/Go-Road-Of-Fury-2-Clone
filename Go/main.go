@@ -56,18 +56,16 @@ var Car1OffsetTimer float32
 var dT float32
 
 func main() {
+
+	// Initialize Game Window ----------------------------------------------------
 	rl.SetConfigFlags(rl.FlagWindowResizable | rl.FlagWindowMaximized)
 	rl.InitWindow(0, 0, "Road Of Fury 2 Clone - Go")
 	defer rl.CloseWindow()
+	//----------------------------------------------------------------------------
+	
+	rl.SetTargetFPS(60) // Locking FPS for now so that i can test the game without having to implement delta time. 
 
-	rl.SetTargetFPS(60)
-
-	Screen := Screen{X: 1920, Y: 1080}
-
-	World := World{X: 11290, Y: 6000}
-
-	Camera := rl.Camera2D{Offset: rl.NewVector2(Screen.X/2, Screen.Y/2), Target: rl.NewVector2(World.X/2, World.Y/2), Rotation: 0, Zoom: 0.17}
-
+	// Loading Textures -----------------------------------------------------------------------------------
 	Car_Hud := rl.LoadTexture("./Textures/Car_Hud_Texture.png")
 	Car1_Texture := rl.LoadTexture("./Textures/car1.png")
 
@@ -77,6 +75,14 @@ func main() {
 	BackGround3 := rl.LoadTexture("./Textures/Background3.png")
 	SkyTexture := rl.LoadTexture("./Textures/Sky.png")
 	CloudTexture := rl.LoadTexture("./Textures/Cloud.png")
+	//-----------------------------------------------------------------------------------------------------
+
+	// Create Structs and entities -------------------------------------------------------------------------
+	Screen := Screen{X: 1920, Y: 1080}
+
+	World := World{X: 11290, Y: 6000}
+
+	Camera := rl.Camera2D{Offset: rl.NewVector2(Screen.X/2, Screen.Y/2), Target: rl.NewVector2(World.X/2, World.Y/2), Rotation: 0, Zoom: 0.17}
 
 	Roads := []Ground{
 		{Pos: rl.NewVector2(0, World.Y-1900), Texture: RoadTexture},
@@ -114,23 +120,30 @@ func main() {
 	}
 
 	Car1 := Car{Pos: rl.NewVector2(-194, World.Y-2200), Texture: Car1_Texture, Health: 600, Power: Nulifier, PowerTime: 10, PowerCooldown: 0.0, Weapon: Minigun, Scale: 5}
+	//------------------------------------------------------------------------------------------------------
 
+	// Game Loop ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 	for !rl.WindowShouldClose() {
 
 		dT = rl.GetFrameTime()
-		Timer += dT
 
+		// Timer to increase the speed -------------------------
+		Timer += dT
 		if Timer > 10 {
 			RoadSpeed += 10
 			Timer = 0.0
 		}
+		//------------------------------------------------------
 
+		// Map Speeds -------------------------------------------
 		Offset -= RoadSpeed
 		BG1Offset -= RoadSpeed / 1.3
 		BG2Offset -= RoadSpeed / 2.5
 		BG3Offset -= RoadSpeed / 5.5
 		SkyOffset -= RoadSpeed / 15
+		//-------------------------------------------------------
 
+		// Border end check -------------------------------------
 		if Offset <= -(1920 * 4 * 5) {
 			Offset = 0
 		}
@@ -146,75 +159,53 @@ func main() {
 		if SkyOffset <= -(1920 * 4 * 5) {
 			SkyOffset = 0
 		}
+		//-------------------------------------------------------
 
 		// Car Random Movement Timer -------------------------------------------------------------------------------------------------
-		if Car1OffsetTimer <= 0 {
-			Roll := rand.IntN(2)
-			if Roll == 0 {
-				Car1OffsetX = rand.Float32() * float32(rand.IntN(101)+5) * Car1.Scale
-			} else {
-				Car1OffsetX = -rand.Float32() * float32(rand.IntN(101)+5) * Car1.Scale
-			}
-			Car1OffsetTimer = 4 + rand.Float32()*12
-		} else {
-			Car1OffsetTimer -= dT
-		}
+		Car1OffsetTimer, Car1OffsetX = RandCarMovementTimer(Car1OffsetTimer, Car1OffsetX, Car1)
 		//-----------------------------------------------------------------------------------------------------------------------------
 
 		// Car Random Movement Handler ------------------------------------------------------------------------------------------------
-		switch {
-		case Car1OffsetX > 0:
-			Car1.Pos.X += 0.5 * Car1.Scale
-			Car1OffsetX -= 0.5 * Car1.Scale
-			if Car1OffsetX < 0 {
-				Car1OffsetX = 0
-			}
-		case Car1OffsetX < 0:
-			Car1.Pos.X -= 0.5 * Car1.Scale
-			Car1OffsetX += 0.5 * Car1.Scale
-			if Car1OffsetX > 0 {
-				Car1OffsetX = 0
-			}
-		}
+		Car1OffsetX, Car1 = RandMove(Car1OffsetX, Car1)
 		//------------------------------------------------------------------------------------------------------------------------------
 
 		// Stops car from going offscreen ----------------------------------------------------------------------------------------------
-		if Car1OffsetX == 0 && Car1.Pos.X < 0 {
-			Car1OffsetX = -Car1.Pos.X
-		} else if Car1OffsetX == 0 && Car1.Pos.X > 2000 {
-			Car1OffsetX = -Car1.Pos.X
-		}
+		Car1OffsetX = RandMoveCheckBoundry(0, 2000, Car1OffsetX, Car1)
 		//------------------------------------------------------------------------------------------------------------------------------
 
 		Clouds = CreateClouds(Clouds, CloudTexture, RoadSpeed, World) // BROKEN STUFF AAAAHHHHH
 
+		// Begin Rendering -------------------------------------------------------------------------------------------------------------------------------------------------------
 		rl.BeginDrawing()
-		rl.ClearBackground(rl.Blue)
+		rl.ClearBackground(rl.Black)
 
+		// Camera start ------------------------------------------------------------------------------------------------------------------
 		rl.BeginMode2D(Camera)
 
-		rl.DrawRectangleV(rl.NewVector2(0, 0), rl.Vector2(World), rl.SkyBlue)
-
+		// Background ---------------------------------------------------------------------------------------------------------------------
 		DrawGround(Skys, SkyOffset)
 
-		DrawClouds(Clouds) // --------------------------------------------------------------------------- FIX CLOUDS PLZ ---------------------------------------------------------------------------------------------------------
+		DrawClouds(Clouds) // <--------------------------------------------------------------------------- FIX CLOUDS PLZ ---------------------------------------------------------------------------------------------------------
 		DrawGround(Background3s, BG3Offset)
 
 		DrawGround(Background2s, BG2Offset)
 
 		DrawGround(Background1s, BG1Offset) // Render Background 1
+		//---------------------------------------------------------------------------------------------------------------------------------
 
 		DrawGround(Roads, Offset) // Render Road
 
-		rl.DrawTextureEx(Car1.Texture, Car1.Pos, 0.0, Car1.Scale, rl.White)
+		rl.DrawTextureEx(Car1.Texture, Car1.Pos, 0.0, Car1.Scale, rl.White) // Render Car 1
 
 		rl.EndMode2D()
+		// Camera end ---------------------------------------------------------------------------------------------------------------------
 
-		rl.DrawTextureEx(Car_Hud, rl.NewVector2(0, 0), 0.0, 1, rl.White)
+		rl.DrawTextureEx(Car_Hud, rl.NewVector2(0, 0), 0.0, 1, rl.White) // Render Game Hud
 
 		rl.EndDrawing()
+		//------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 	}
-
+	//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 }
 
 // Creates a Moving Foreground or Background depending on the order of use.
@@ -270,6 +261,7 @@ func DrawClouds(Clouds []Cloud) {
 	}
 }
 
+// Handles the Randomness of the movement by making them only move after a set random time has passed.
 func RandCarMovementTimer(CarOffsetTimer, CarOffsetX float32, Car Car) (float32, float32) {
 	if CarOffsetTimer <= 0 {
 		Roll := rand.IntN(2)
@@ -278,10 +270,39 @@ func RandCarMovementTimer(CarOffsetTimer, CarOffsetX float32, Car Car) (float32,
 		} else {
 			CarOffsetX = -rand.Float32() * float32(rand.IntN(101)+5) * Car.Scale
 		}
-		Car1OffsetTimer = 4 + rand.Float32()*12
+		CarOffsetTimer = 4 + rand.Float32()*12
 	} else {
-		Car1OffsetTimer -= dT
+		CarOffsetTimer -= dT
 	}
 
 	return CarOffsetTimer, CarOffsetX
+}
+
+// Actually Does the Random Movement.
+func RandMove(CarOffsetX float32, Car Car) (float32, Car) {
+	switch {
+	case Car1OffsetX > 0:
+		Car.Pos.X += 0.5 * Car.Scale
+		CarOffsetX -= 0.5 * Car.Scale
+		if CarOffsetX < 0 {
+			CarOffsetX = 0
+		}
+	case Car1OffsetX < 0:
+		Car.Pos.X -= 0.5 * Car.Scale
+		CarOffsetX += 0.5 * Car.Scale
+		if CarOffsetX > 0 {
+			CarOffsetX = 0
+		}
+	}
+	return CarOffsetX, Car
+}
+
+// Makes sure that the Car doesn't cross it's boundries.
+func RandMoveCheckBoundry(Min, Max, CarOffsetX float32, Car Car) float32 {
+	if CarOffsetX == 0 && Car.Pos.X < Min {
+		CarOffsetX = -Car.Pos.X
+	} else if CarOffsetX == 0 && Car.Pos.X > Max {
+		CarOffsetX = -Car.Pos.X
+	}
+	return CarOffsetX
 }
