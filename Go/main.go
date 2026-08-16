@@ -1,6 +1,7 @@
 package main
 
 import (
+	"math"
 	"math/rand/v2"
 
 	rl "github.com/gen2brain/raylib-go/raylib"
@@ -23,6 +24,14 @@ type Car struct {
 	PowerCooldown float32
 	Weapon        int
 	Scale         float32
+	OffsetSpeed float32
+}
+type Gun struct {
+	PosBody rl.Vector2
+	PosGun rl.Vector2
+	Angle	float32
+	TextureBody rl.Texture2D
+	TextureGun rl.Texture2D
 }
 type Ground struct {
 	Pos     rl.Vector2
@@ -53,6 +62,11 @@ var SkyOffset float32
 var CloudTimer float32
 var Car1OffsetX float32
 var Car1OffsetTimer float32
+var Car2OffsetTimer float32
+var Car2OffsetX float32
+var Car3OffsetTimer float32
+var Car3OffsetX float32
+var Gun1Angle float32 
 var dT float32
 
 func main() {
@@ -75,11 +89,13 @@ func main() {
 	BackGround3 := rl.LoadTexture("./Textures/Background3.png")
 	SkyTexture := rl.LoadTexture("./Textures/Sky.png")
 	CloudTexture := rl.LoadTexture("./Textures/Cloud.png")
+	MiniGunBody := rl.LoadTexture("./Textures/Gun/MiniGunBase.png")
+	MiniGunTexture := rl.LoadTexture("./Textures/Gun/MiniGun.png")
 	//-----------------------------------------------------------------------------------------------------
 
-	// Create Structs and entities -------------------------------------------------------------------------
+	// Create Structs and entities --------------------------------------------------------------------------------------------------------------------------------------------
 	Screen := Screen{X: 1920, Y: 1080}
-
+	
 	World := World{X: 11290, Y: 6000}
 
 	Camera := rl.Camera2D{Offset: rl.NewVector2(Screen.X/2, Screen.Y/2), Target: rl.NewVector2(World.X/2, World.Y/2), Rotation: 0, Zoom: 0.17}
@@ -119,13 +135,21 @@ func main() {
 		{Pos: rl.NewVector2(World.X-3000, 0), Texture: CloudTexture},
 	}
 
-	Car1 := Car{Pos: rl.NewVector2(-194, World.Y-2200), Texture: Car1_Texture, Health: 600, Power: Nulifier, PowerTime: 10, PowerCooldown: 0.0, Weapon: Minigun, Scale: 5}
-	//------------------------------------------------------------------------------------------------------
+	Car1 := Car{Pos: rl.NewVector2(-694, World.Y-2200), Texture: Car1_Texture, Health: 600, Power: Nulifier, PowerTime: 10, PowerCooldown: 0.0, Weapon: Minigun, Scale: 5, OffsetSpeed: 1}
+	Car2 := Car{Pos: rl.NewVector2(-394, World.Y-2200), Texture: Car1_Texture, Health: 600, Power: Sat, PowerTime: 10, PowerCooldown: 0.0, Weapon: PulseGun, Scale: 5, OffsetSpeed: 1.5}
+	Car3 := Car{Pos: rl.NewVector2(-194, World.Y-2200), Texture: Car1_Texture, Health: 600, Power: Emp, PowerTime: 10, PowerCooldown: 0.0, Weapon: Laser, Scale: 5, OffsetSpeed: 5}
+
+	Gun1 := Gun{PosBody: rl.NewVector2(Car1.Pos.X+300, World.Y-2300), PosGun: rl.NewVector2(Car1.Pos.X+300-(16*3),World.Y-2350), Angle: Gun1Angle, TextureBody: MiniGunBody, TextureGun: MiniGunTexture}
+	//-------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 	// Game Loop ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 	for !rl.WindowShouldClose() {
 
 		dT = rl.GetFrameTime()
+		Mouse := rl.GetMousePosition()
+
+		Gun1Angle = float32(math.Atan(float64((Mouse.Y-Gun1.PosGun.Y)/(Mouse.X-Gun1.PosGun.X)))) 
+		Gun1.Angle = Gun1Angle
 
 		// Timer to increase the speed -------------------------
 		Timer += dT
@@ -162,20 +186,26 @@ func main() {
 		//-------------------------------------------------------
 
 		// Car Random Movement Timer -------------------------------------------------------------------------------------------------
-		Car1OffsetTimer, Car1OffsetX = RandCarMovementTimer(Car1OffsetTimer, Car1OffsetX, Car1)
+		Car1OffsetTimer, Car1OffsetX, Car1 = RandCarMovementTimer(Car1OffsetTimer, Car1OffsetX, Car1)
+		Car2OffsetTimer, Car2OffsetX, Car2 = RandCarMovementTimer(Car2OffsetTimer, Car2OffsetX, Car2)
+		Car3OffsetTimer, Car3OffsetX, Car3 = RandCarMovementTimer(Car3OffsetTimer, Car3OffsetX, Car3)
 		//-----------------------------------------------------------------------------------------------------------------------------
 
 		// Car Random Movement Handler ------------------------------------------------------------------------------------------------
 		Car1OffsetX, Car1 = RandMove(Car1OffsetX, Car1)
+		Car2OffsetX, Car2 = RandMove(Car2OffsetX, Car2)
+		Car3OffsetX, Car3 = RandMove(Car3OffsetX, Car3)
 		//------------------------------------------------------------------------------------------------------------------------------
 
 		// Stops car from going offscreen ----------------------------------------------------------------------------------------------
-		Car1OffsetX = RandMoveCheckBoundry(0, 2000, Car1OffsetX, Car1)
+		Car1OffsetX = RandMoveCheckBoundry(0, 1200, Car1OffsetX, Car1)
+		Car2OffsetX = RandMoveCheckBoundry(700, 1700, Car2OffsetX, Car2)
+		Car3OffsetX = RandMoveCheckBoundry(1600, 2500, Car3OffsetX, Car3)
 		//------------------------------------------------------------------------------------------------------------------------------
 
 		Clouds = CreateClouds(Clouds, CloudTexture, RoadSpeed, World) // BROKEN STUFF AAAAHHHHH
 
-		// Begin Rendering -------------------------------------------------------------------------------------------------------------------------------------------------------
+		// Begin Rendering ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 		rl.BeginDrawing()
 		rl.ClearBackground(rl.Black)
 
@@ -195,7 +225,12 @@ func main() {
 
 		DrawGround(Roads, Offset) // Render Road
 
+		rl.DrawTextureEx(Gun1.TextureBody, Gun1.PosBody, 0.0, 5, rl.White)
+		rl.DrawTextureEx(Gun1.TextureGun, Gun1.PosGun, Gun1.Angle, 5, rl.White)
+
 		rl.DrawTextureEx(Car1.Texture, Car1.Pos, 0.0, Car1.Scale, rl.White) // Render Car 1
+		rl.DrawTextureEx(Car2.Texture, Car2.Pos, 0.0, Car2.Scale, rl.White)
+		rl.DrawTextureEx(Car3.Texture, Car3.Pos, 0.0, Car3.Scale, rl.White)
 
 		rl.EndMode2D()
 		// Camera end ---------------------------------------------------------------------------------------------------------------------
@@ -203,7 +238,7 @@ func main() {
 		rl.DrawTextureEx(Car_Hud, rl.NewVector2(0, 0), 0.0, 1, rl.White) // Render Game Hud
 
 		rl.EndDrawing()
-		//------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+		//----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 	}
 	//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 }
@@ -262,7 +297,7 @@ func DrawClouds(Clouds []Cloud) {
 }
 
 // Handles the Randomness of the movement by making them only move after a set random time has passed.
-func RandCarMovementTimer(CarOffsetTimer, CarOffsetX float32, Car Car) (float32, float32) {
+func RandCarMovementTimer(CarOffsetTimer, CarOffsetX float32, Car Car) (float32, float32, Car) {
 	if CarOffsetTimer <= 0 {
 		Roll := rand.IntN(2)
 		if Roll == 0 {
@@ -271,25 +306,26 @@ func RandCarMovementTimer(CarOffsetTimer, CarOffsetX float32, Car Car) (float32,
 			CarOffsetX = -rand.Float32() * float32(rand.IntN(101)+5) * Car.Scale
 		}
 		CarOffsetTimer = 4 + rand.Float32()*12
+		Car.OffsetSpeed = 0.5+rand.Float32()*0.5
 	} else {
 		CarOffsetTimer -= dT
 	}
 
-	return CarOffsetTimer, CarOffsetX
+	return CarOffsetTimer, CarOffsetX, Car
 }
 
 // Actually Does the Random Movement.
 func RandMove(CarOffsetX float32, Car Car) (float32, Car) {
 	switch {
-	case Car1OffsetX > 0:
-		Car.Pos.X += 0.5 * Car.Scale
-		CarOffsetX -= 0.5 * Car.Scale
+	case CarOffsetX > 0:
+		Car.Pos.X += Car.OffsetSpeed * Car.Scale
+		CarOffsetX -= Car. OffsetSpeed * Car.Scale
 		if CarOffsetX < 0 {
 			CarOffsetX = 0
 		}
-	case Car1OffsetX < 0:
-		Car.Pos.X -= 0.5 * Car.Scale
-		CarOffsetX += 0.5 * Car.Scale
+	case CarOffsetX < 0:
+		Car.Pos.X -= Car.OffsetSpeed * Car.Scale
+		CarOffsetX += Car.OffsetSpeed * Car.Scale
 		if CarOffsetX > 0 {
 			CarOffsetX = 0
 		}
@@ -300,9 +336,9 @@ func RandMove(CarOffsetX float32, Car Car) (float32, Car) {
 // Makes sure that the Car doesn't cross it's boundries.
 func RandMoveCheckBoundry(Min, Max, CarOffsetX float32, Car Car) float32 {
 	if CarOffsetX == 0 && Car.Pos.X < Min {
-		CarOffsetX = -Car.Pos.X
+		CarOffsetX = Min-Car.Pos.X
 	} else if CarOffsetX == 0 && Car.Pos.X > Max {
-		CarOffsetX = -Car.Pos.X
+		CarOffsetX = Car.Pos.X-Max
 	}
 	return CarOffsetX
 }
