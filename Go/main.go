@@ -1,6 +1,7 @@
 package main
 
 import (
+	// "fmt"
 	"math"
 	"math/rand/v2"
 
@@ -32,6 +33,7 @@ type Gun struct {
 	Angle	float32
 	TextureBody rl.Texture2D
 	TextureGun rl.Texture2D
+	PrevGunAngle float32
 }
 type Ground struct {
 	Pos     rl.Vector2
@@ -66,7 +68,7 @@ var Car2OffsetTimer float32
 var Car2OffsetX float32
 var Car3OffsetTimer float32
 var Car3OffsetX float32
-var Gun1Angle float32 
+var Gun1Angle float64
 var dT float32
 
 func main() {
@@ -89,8 +91,8 @@ func main() {
 	BackGround3 := rl.LoadTexture("./Textures/Background3.png")
 	SkyTexture := rl.LoadTexture("./Textures/Sky.png")
 	CloudTexture := rl.LoadTexture("./Textures/Cloud.png")
-	MiniGunBody := rl.LoadTexture("./Textures/Gun/MiniGunBase.png")
-	MiniGunTexture := rl.LoadTexture("./Textures/Gun/MiniGun.png")
+	MiniGunBody := rl.LoadTexture("./Textures/Guns/MiniGunBase.png")
+	MiniGunTexture := rl.LoadTexture("./Textures/Guns/MiniGun.png")
 	//-----------------------------------------------------------------------------------------------------
 
 	// Create Structs and entities --------------------------------------------------------------------------------------------------------------------------------------------
@@ -139,7 +141,7 @@ func main() {
 	Car2 := Car{Pos: rl.NewVector2(-394, World.Y-2200), Texture: Car1_Texture, Health: 600, Power: Sat, PowerTime: 10, PowerCooldown: 0.0, Weapon: PulseGun, Scale: 5, OffsetSpeed: 1.5}
 	Car3 := Car{Pos: rl.NewVector2(-194, World.Y-2200), Texture: Car1_Texture, Health: 600, Power: Emp, PowerTime: 10, PowerCooldown: 0.0, Weapon: Laser, Scale: 5, OffsetSpeed: 5}
 
-	Gun1 := Gun{PosBody: rl.NewVector2(Car1.Pos.X+300, World.Y-2300), PosGun: rl.NewVector2(Car1.Pos.X+300-(16*3),World.Y-2350), Angle: Gun1Angle, TextureBody: MiniGunBody, TextureGun: MiniGunTexture}
+	Gun1 := Gun{PosBody: rl.NewVector2(Car1.Pos.X+300, World.Y-3000), PosGun: rl.NewVector2(Car1.Pos.X+300-(16*3),World.Y-2350), Angle: 0, TextureBody: MiniGunBody, TextureGun: MiniGunTexture, PrevGunAngle: 0}
 	//-------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 	// Game Loop ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -147,9 +149,15 @@ func main() {
 
 		dT = rl.GetFrameTime()
 		Mouse := rl.GetMousePosition()
+		WorldMouse := rl.GetScreenToWorld2D(Mouse, Camera)
 
-		Gun1Angle = float32(math.Atan(float64((Mouse.Y-Gun1.PosGun.Y)/(Mouse.X-Gun1.PosGun.X)))) 
-		Gun1.Angle = Gun1Angle
+		// Position the Guns on the cars ------------------------------
+		Gun1.PosBody = Car1.Pos.Add(Car1Minigun.GunBody)
+		Gun1.PosGun = Car1.Pos.Add(Car1Minigun.GunGun)
+		//-------------------------------------------------------------
+		// Gun Following Cursor handler -------------------------------
+		Gun1.Angle, Gun1.PrevGunAngle = GunFollow(WorldMouse, Gun1)
+		//-------------------------------------------------------------
 
 		// Timer to increase the speed -------------------------
 		Timer += dT
@@ -225,17 +233,20 @@ func main() {
 
 		DrawGround(Roads, Offset) // Render Road
 
-		rl.DrawTextureEx(Gun1.TextureBody, Gun1.PosBody, 0.0, 5, rl.White)
-		rl.DrawTextureEx(Gun1.TextureGun, Gun1.PosGun, Gun1.Angle, 5, rl.White)
-
+		
 		rl.DrawTextureEx(Car1.Texture, Car1.Pos, 0.0, Car1.Scale, rl.White) // Render Car 1
 		rl.DrawTextureEx(Car2.Texture, Car2.Pos, 0.0, Car2.Scale, rl.White)
 		rl.DrawTextureEx(Car3.Texture, Car3.Pos, 0.0, Car3.Scale, rl.White)
-
+		
+		rl.DrawTexturePro(MiniGunTexture, rl.NewRectangle(0, 0, 39, 7), rl.NewRectangle(Gun1.PosGun.X+85, Gun1.PosGun.Y, 300, 70), rl.NewVector2(85, 30), Gun1.Angle, rl.White)
+		rl.DrawTextureEx(Gun1.TextureBody, Gun1.PosBody, 0.0, Car1Minigun.Scale, rl.White)
+		
 		rl.EndMode2D()
 		// Camera end ---------------------------------------------------------------------------------------------------------------------
 
 		rl.DrawTextureEx(Car_Hud, rl.NewVector2(0, 0), 0.0, 1, rl.White) // Render Game Hud
+
+		// rl.DrawTextEx(rl.GetFontDefault(),fmt.Sprintf("Angle: %0.2f , dX: %0.2f , dY: %0.2f", Gun1Angle, dx, dy), rl.NewVector2(10, 10), 50, 10, rl.White)
 
 		rl.EndDrawing()
 		//----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -341,4 +352,21 @@ func RandMoveCheckBoundry(Min, Max, CarOffsetX float32, Car Car) float32 {
 		CarOffsetX = Car.Pos.X-Max
 	}
 	return CarOffsetX
+}
+
+// Makes the Gun follow the Cursor.
+func GunFollow(Mouse rl.Vector2, Gun Gun) (float32, float32) {
+		dx := float64(Mouse.X-Gun.PosGun.X)
+		dy := float64(Mouse.Y-Gun.PosGun.Y)
+
+		GunAngle := math.Atan2(dy,dx)*180/math.Pi
+
+		if GunAngle > 45 || GunAngle < -135 {
+			return float32(Gun.PrevGunAngle), float32(Gun.PrevGunAngle)
+		}else if GunAngle > 42 {
+			GunAngle = 42 
+		}else if GunAngle < -130 {
+			GunAngle = -130
+		}
+	return float32(GunAngle), float32(GunAngle)
 }
