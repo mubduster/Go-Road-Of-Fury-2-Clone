@@ -1,7 +1,7 @@
 package main
 
 import (
-	// "fmt"
+	"fmt"
 	"math"
 	"math/rand/v2"
 
@@ -70,6 +70,7 @@ var Car3OffsetTimer float32
 var Car3OffsetX float32
 var GunAngle float64
 var dT float32
+var RotationSpeed float32
 
 func main() {
 
@@ -159,9 +160,9 @@ func main() {
 		Gun3 = AttachGunToCar(Gun3, Car3)
 		//-------------------------------------------------------------
 		// Gun Following Cursor handler -------------------------------
-		Gun1.Angle, Gun1.PrevGunAngle = GunFollow(WorldMouse, Gun1)
-		Gun2.Angle, Gun2.PrevGunAngle = GunFollow(WorldMouse, Gun2)
-		Gun3.Angle, Gun3.PrevGunAngle = GunFollow(WorldMouse, Gun3)
+		Gun1 = GunFollow(WorldMouse, Gun1, Car1)
+		Gun2 = GunFollow(WorldMouse, Gun2, Car2)
+		Gun3 = GunFollow(WorldMouse, Gun3, Car3)
 		//-------------------------------------------------------------
 
 		// Timer to increase the speed -------------------------
@@ -257,7 +258,7 @@ func main() {
 
 		rl.DrawTextureEx(Car_Hud, rl.NewVector2(0, 0), 0.0, 1, rl.White) // Render Game Hud
 
-		// rl.DrawTextEx(rl.GetFontDefault(),fmt.Sprintf("Angle: %0.2f , dX: %0.2f , dY: %0.2f", Gun1Angle, dx, dy), rl.NewVector2(10, 10), 50, 10, rl.White)
+		rl.DrawTextEx(rl.GetFontDefault(),fmt.Sprintf("Angle: %0.2f", Gun1.Angle), rl.NewVector2(10, 10), 50, 10, rl.White)
 
 		rl.EndDrawing()
 		//----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -375,18 +376,33 @@ func AttachGunToCar(Gun Gun, Car Car) Gun{
 	return Gun
 }
 // Makes the Gun follow the Cursor.
-func GunFollow(Mouse rl.Vector2, Gun Gun) (float32, float32,) {
+func GunFollow(Mouse rl.Vector2, Gun Gun, Car Car) Gun {
 		dx := float64(Mouse.X-Gun.PosGun.X)
 		dy := float64(Mouse.Y-Gun.PosGun.Y)
 
 		GunAngle := math.Atan2(dy,dx)*180/math.Pi
 
-		if GunAngle > 45 || GunAngle < -135 {
-			return float32(Gun.PrevGunAngle), float32(Gun.PrevGunAngle)
-		}else if GunAngle > 42 {
-			GunAngle = 42 
-		}else if GunAngle < -130 {
-			GunAngle = -130
+		DeltaAngle := Gun.Angle - float32(GunAngle)
+
+		switch Car.Weapon {
+		case Minigun:
+			RotationSpeed = Car1Minigun.RotationSpeed
 		}
-	return float32(GunAngle), float32(GunAngle)
+		
+		if DeltaAngle > 0 && Gun.Angle < 45 && Gun.Angle > -135  {
+			Gun.Angle -= RotationSpeed
+			DeltaAngle += RotationSpeed
+		}else if DeltaAngle < 0 && Gun.Angle < 45 && Gun.Angle > -135 {
+			Gun.Angle += RotationSpeed
+			DeltaAngle -= RotationSpeed
+		}else if Gun.Angle >= 45 {
+			Gun.Angle = 44.9
+		}else if Gun.Angle <= -135 {
+			Gun.Angle = -134.9
+		}
+	return Gun
+}
+
+func GunAnimationPlay(Gun Gun, SpriteSize rl.Vector2, SpriteXSpacing float32, dT float32) {
+	rl.DrawTexturePro(Gun.TextureGun, rl.NewRectangle(SpriteXSpacing, 0, 39, 7), rl.NewRectangle(Gun.PosGun.X+85, Gun.PosGun.Y, 300, 70), rl.NewVector2(85, 30), Gun1.Angle, rl.White)
 }
