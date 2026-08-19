@@ -33,7 +33,8 @@ type Gun struct {
 	Angle	float32
 	TextureBody rl.Texture2D
 	TextureGun rl.Texture2D
-	PrevGunAngle float32
+	Frame int
+	AniTime float32
 }
 type Ground struct {
 	Pos     rl.Vector2
@@ -142,9 +143,9 @@ func main() {
 	Car2 := Car{Pos: rl.NewVector2(-394, World.Y-2200), Texture: Car1_Texture, Health: 600, Power: Sat, PowerTime: 10, PowerCooldown: 0.0, Weapon: Minigun, Scale: 5, OffsetSpeed: 1.5}
 	Car3 := Car{Pos: rl.NewVector2(-194, World.Y-2200), Texture: Car1_Texture, Health: 600, Power: Emp, PowerTime: 10, PowerCooldown: 0.0, Weapon: Minigun, Scale: 5, OffsetSpeed: 5}
 
-	Gun1 := Gun{PosBody: rl.NewVector2(Car1.Pos.X+300, World.Y-3000), PosGun: rl.NewVector2(Car1.Pos.X+300-(16*3), World.Y-2350), Angle: float32(GunAngle), TextureBody: MiniGunBody, TextureGun: MiniGunTexture, PrevGunAngle: 0}
-	Gun2 := Gun{PosBody: rl.NewVector2(Car2.Pos.X+300, World.Y-3000), PosGun: rl.NewVector2(Car2.Pos.X+300-(16*3), World.Y-2350), Angle: float32(GunAngle), TextureBody: MiniGunBody, TextureGun: MiniGunTexture, PrevGunAngle: 0}
-	Gun3 := Gun{PosBody: rl.NewVector2(Car3.Pos.X+300, World.Y-3000), PosGun: rl.NewVector2(Car3.Pos.X+300-(16*3), World.Y-2350), Angle: float32(GunAngle), TextureBody: MiniGunBody, TextureGun: MiniGunTexture, PrevGunAngle: 0}
+	Gun1 := Gun{PosBody: rl.NewVector2(Car1.Pos.X+300, World.Y-3000), PosGun: rl.NewVector2(Car1.Pos.X+300-(16*3), World.Y-2350), Angle: float32(GunAngle), TextureBody: MiniGunBody, TextureGun: MiniGunTexture, Frame: 0}
+	Gun2 := Gun{PosBody: rl.NewVector2(Car2.Pos.X+300, World.Y-3000), PosGun: rl.NewVector2(Car2.Pos.X+300-(16*3), World.Y-2350), Angle: float32(GunAngle), TextureBody: MiniGunBody, TextureGun: MiniGunTexture, Frame: 0}
+	Gun3 := Gun{PosBody: rl.NewVector2(Car3.Pos.X+300, World.Y-3000), PosGun: rl.NewVector2(Car3.Pos.X+300-(16*3), World.Y-2350), Angle: float32(GunAngle), TextureBody: MiniGunBody, TextureGun: MiniGunTexture, Frame: 0}
 	//-------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 	// Game Loop ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -241,15 +242,18 @@ func main() {
 
 		
 		rl.DrawTextureEx(Car1.Texture, Car1.Pos, 0.0, Car1.Scale, rl.White) // Render Car 1
-		rl.DrawTexturePro(Gun1.TextureGun, rl.NewRectangle(0, 0, 39, 7), rl.NewRectangle(Gun1.PosGun.X+85, Gun1.PosGun.Y, 300, 70), rl.NewVector2(85, 30), Gun1.Angle, rl.White)
+		GunAnimationPlay(Car1, &Gun1, 8, dT, 3)
+		// rl.DrawTexturePro(Gun1.TextureGun, rl.NewRectangle(0, 0, 39, 7), rl.NewRectangle(Gun1.PosGun.X+85, Gun1.PosGun.Y, 300, 70), rl.NewVector2(85, 30), Gun1.Angle, rl.White)
 		rl.DrawTextureEx(Gun1.TextureBody, Gun1.PosBody, 0.0, Car1Minigun.Scale, rl.White)
 
 		rl.DrawTextureEx(Car2.Texture, Car2.Pos, 0.0, Car2.Scale, rl.White)
-		rl.DrawTexturePro(Gun2.TextureGun, rl.NewRectangle(0, 0, 39, 7), rl.NewRectangle(Gun2.PosGun.X+85, Gun2.PosGun.Y, 300, 70), rl.NewVector2(85, 30), Gun2.Angle, rl.White)
+		GunAnimationPlay(Car2, &Gun2, 8, dT, 3)
+		// rl.DrawTexturePro(Gun2.TextureGun, rl.NewRectangle(0, 0, 39, 7), rl.NewRectangle(Gun2.PosGun.X+85, Gun2.PosGun.Y, 300, 70), rl.NewVector2(85, 30), Gun2.Angle, rl.White)
 		rl.DrawTextureEx(Gun2.TextureBody, Gun2.PosBody, 0.0, Car1Minigun.Scale, rl.White)
 
 		rl.DrawTextureEx(Car3.Texture, Car3.Pos, 0.0, Car3.Scale, rl.White)
-		rl.DrawTexturePro(Gun3.TextureGun, rl.NewRectangle(0, 0, 39, 7), rl.NewRectangle(Gun3.PosGun.X+85, Gun3.PosGun.Y, 300, 70), rl.NewVector2(85,30), Gun3.Angle, rl.White)
+		GunAnimationPlay(Car2, &Gun3, 8, dT, 3)
+		// rl.DrawTexturePro(Gun3.TextureGun, rl.NewRectangle(0, 0, 39, 7), rl.NewRectangle(Gun3.PosGun.X+85, Gun3.PosGun.Y, 300, 70), rl.NewVector2(85,30), Gun3.Angle, rl.White)
 		rl.DrawTextureEx(Gun3.TextureBody, Gun3.PosBody, 0.0, Car1Minigun.Scale, rl.White)
 		
 		
@@ -403,6 +407,14 @@ func GunFollow(Mouse rl.Vector2, Gun Gun, Car Car) Gun {
 	return Gun
 }
 
-func GunAnimationPlay(Gun Gun, SpriteSize rl.Vector2, SpriteXSpacing float32, dT float32) {
-	rl.DrawTexturePro(Gun.TextureGun, rl.NewRectangle(SpriteXSpacing, 0, 39, 7), rl.NewRectangle(Gun.PosGun.X+85, Gun.PosGun.Y, 300, 70), rl.NewVector2(85, 30), Gun1.Angle, rl.White)
+func GunAnimationPlay(Car Car, Gun *Gun, SpriteXSpacing float32, dT float32, Frames int) {
+	switch Car.Weapon {
+	case Minigun:
+		rl.DrawTexturePro(Gun.TextureGun, rl.NewRectangle((42+SpriteXSpacing)* float32(Gun.Frame), 3, 42, 7), rl.NewRectangle(Gun.PosGun.X+85, Gun.PosGun.Y, 323, 70), rl.NewVector2(85, 30), Gun.Angle, rl.White)
+	}
+
+	Gun.Frame ++
+	if Gun.Frame == Frames+1 {
+		Gun.Frame = 0
+	}
 }
