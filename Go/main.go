@@ -25,19 +25,19 @@ type Car struct {
 	PowerCooldown float32
 	Weapon        int
 	Scale         float32
-	OffsetSpeed float32
-	WheelTexture rl.Texture2D
-	Frames int
-	Car int
+	OffsetSpeed   float32
+	WheelTexture  rl.Texture2D
+	Frames        int
+	Car           int
 }
 type Gun struct {
-	PosBody rl.Vector2
-	PosGun rl.Vector2
-	Angle	float32
+	PosBody     rl.Vector2
+	PosGun      rl.Vector2
+	Angle       float32
 	TextureBody rl.Texture2D
-	TextureGun rl.Texture2D
-	Frames int
-	AniTime float32
+	TextureGun  rl.Texture2D
+	Frames      int
+	AniTime     float32
 }
 type Ground struct {
 	Pos     rl.Vector2
@@ -56,6 +56,14 @@ type CactusTextures struct {
 type WorldCactus struct {
 	Pos     rl.Vector2
 	Texture rl.Texture2D
+}
+type Bullets struct {
+	Pos        rl.Vector2
+	Type       int
+	Damage     float32
+	BulletTime float32
+	Angle      float32
+	Rect       rl.Rectangle
 }
 
 var RoadSpeed float32 = 200
@@ -76,10 +84,12 @@ var GunAngle float64
 var dT float32
 var RotationSpeed float32
 var Car1Wheel rl.Texture2D
+var Car1Bullets []Bullets
+var ShotDelay float32
 
 const (
-	Car1 = iota+1
-	Car2 
+	Car1 = iota + 1
+	Car2
 	Car3
 )
 
@@ -90,8 +100,8 @@ func main() {
 	rl.InitWindow(0, 0, "Road Of Fury 2 Clone - Go")
 	defer rl.CloseWindow()
 	//----------------------------------------------------------------------------
-	
-	rl.SetTargetFPS(60) // Locking FPS for now so that i can test the game without having to implement delta time. 
+
+	rl.SetTargetFPS(60) // Locking FPS for now so that i can test the game without having to implement delta time.
 
 	// Loading Textures -----------------------------------------------------------------------------------
 	Car_Hud := rl.LoadTexture("./Textures/Car_Hud_Texture.png")
@@ -112,7 +122,7 @@ func main() {
 
 	// Create Structs and entities --------------------------------------------------------------------------------------------------------------------------------------------
 	Screen := Screen{X: 1920, Y: 1080}
-	
+
 	World := World{X: 11290, Y: 6000}
 
 	Camera := rl.Camera2D{Offset: rl.NewVector2(Screen.X/2, Screen.Y/2), Target: rl.NewVector2(World.X/2, World.Y/2), Rotation: 0, Zoom: 0.17}
@@ -233,6 +243,8 @@ func main() {
 
 		Clouds = CreateClouds(Clouds, CloudTexture, RoadSpeed, World) // BROKEN STUFF AAAAHHHHH
 
+		Car1Bullets = MiniGunShoot(Car1, Gun1, Car1Bullets, 5, dT)
+
 		// Begin Rendering ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 		rl.BeginDrawing()
 		rl.ClearBackground(rl.Black)
@@ -253,7 +265,6 @@ func main() {
 
 		DrawGround(Roads, Offset) // Render Road
 
-		
 		WheelAnimationPlayer(&Car1, 10, dT, 0)
 		rl.DrawTextureEx(Car1.Texture, Car1.Pos, 0.0, Car1.Scale, rl.White) // Render Car 1
 		GunAnimationPlay(Car1, &Gun1, 8, dT, 3)
@@ -269,14 +280,17 @@ func main() {
 		GunAnimationPlay(Car2, &Gun3, 8, dT, 3)
 		// rl.DrawTexturePro(Gun3.TextureGun, rl.NewRectangle(0, 0, 39, 7), rl.NewRectangle(Gun3.PosGun.X+85, Gun3.PosGun.Y, 300, 70), rl.NewVector2(85,30), Gun3.Angle, rl.White)
 		rl.DrawTextureEx(Gun3.TextureBody, Gun3.PosBody, 0.0, Car1Minigun.Scale, rl.White)
-		
-		
+
+		for i := range Car1Bullets {
+			rl.DrawRectanglePro(rl.NewRectangle(Car1Bullets[i].Rect.X, Car1Bullets[i].Rect.Y, Car1Bullets[i].Rect.Width, Car1Bullets[i].Rect.Height), rl.NewVector2(0, 0), Car1Bullets[i].Angle, rl.Yellow)
+		}
+
 		rl.EndMode2D()
 		// Camera end ---------------------------------------------------------------------------------------------------------------------
 
 		rl.DrawTextureEx(Car_Hud, rl.NewVector2(0, 0), 0.0, 1, rl.White) // Render Game Hud
 
-		rl.DrawTextEx(rl.GetFontDefault(),fmt.Sprintf("Angle: %0.2f", Gun1.Angle), rl.NewVector2(10, 10), 50, 10, rl.White)
+		rl.DrawTextEx(rl.GetFontDefault(), fmt.Sprintf("Angle: %0.2f", Gun1.Angle), rl.NewVector2(10, 10), 50, 10, rl.White)
 
 		rl.EndDrawing()
 		//----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -347,7 +361,7 @@ func RandCarMovementTimer(CarOffsetTimer, CarOffsetX float32, Car Car) (float32,
 			CarOffsetX = -rand.Float32() * float32(rand.IntN(101)+5) * Car.Scale
 		}
 		CarOffsetTimer = 4 + rand.Float32()*12
-		Car.OffsetSpeed = 0.5+rand.Float32()*0.5
+		Car.OffsetSpeed = 0.5 + rand.Float32()*0.5
 	} else {
 		CarOffsetTimer -= dT
 	}
@@ -360,7 +374,7 @@ func RandMove(CarOffsetX float32, Car Car) (float32, Car) {
 	switch {
 	case CarOffsetX > 0:
 		Car.Pos.X += Car.OffsetSpeed * Car.Scale
-		CarOffsetX -= Car. OffsetSpeed * Car.Scale
+		CarOffsetX -= Car.OffsetSpeed * Car.Scale
 		if CarOffsetX < 0 {
 			CarOffsetX = 0
 		}
@@ -377,15 +391,15 @@ func RandMove(CarOffsetX float32, Car Car) (float32, Car) {
 // Makes sure that the Car doesn't cross it's boundries.
 func RandMoveCheckBoundry(Min, Max, CarOffsetX float32, Car Car) float32 {
 	if CarOffsetX == 0 && Car.Pos.X < Min {
-		CarOffsetX = Min-Car.Pos.X
+		CarOffsetX = Min - Car.Pos.X
 	} else if CarOffsetX == 0 && Car.Pos.X > Max {
-		CarOffsetX = Car.Pos.X-Max
+		CarOffsetX = Car.Pos.X - Max
 	}
 	return CarOffsetX
 }
 
 // Moves the Gun relative to it's car.
-func AttachGunToCar(Gun Gun, Car Car) Gun{
+func AttachGunToCar(Gun Gun, Car Car) Gun {
 	switch Car.Weapon {
 	case Minigun:
 		Gun.PosBody = Car.Pos.Add(Car1Minigun.GunBody)
@@ -393,61 +407,87 @@ func AttachGunToCar(Gun Gun, Car Car) Gun{
 	}
 	return Gun
 }
+
 // Makes the Gun follow the Cursor.
 func GunFollow(Mouse rl.Vector2, Gun Gun, Car Car) Gun {
-		dx := float64(Mouse.X-Gun.PosGun.X)
-		dy := float64(Mouse.Y-Gun.PosGun.Y)
+	dx := float64(Mouse.X - Gun.PosGun.X)
+	dy := float64(Mouse.Y - Gun.PosGun.Y)
 
-		GunAngle := math.Atan2(dy,dx)*180/math.Pi
+	GunAngle := math.Atan2(dy, dx) * 180 / math.Pi
 
-		DeltaAngle := Gun.Angle - float32(GunAngle)
+	DeltaAngle := Gun.Angle - float32(GunAngle)
 
-		switch Car.Weapon {
-		case Minigun:
-			RotationSpeed = Car1Minigun.RotationSpeed
-		}
-		
-		if DeltaAngle > 0 && Gun.Angle < 45 && Gun.Angle > -135  {
-			Gun.Angle -= RotationSpeed
-			DeltaAngle += RotationSpeed
-		}else if DeltaAngle < 0 && Gun.Angle < 45 && Gun.Angle > -135 {
-			Gun.Angle += RotationSpeed
-			DeltaAngle -= RotationSpeed
-		}else if Gun.Angle >= 45 {
-			Gun.Angle = 44.9
-		}else if Gun.Angle <= -135 {
-			Gun.Angle = -134.9
-		}
+	switch Car.Weapon {
+	case Minigun:
+		RotationSpeed = Car1Minigun.RotationSpeed
+	}
+
+	if DeltaAngle > 0 && Gun.Angle < 45 && Gun.Angle > -135 {
+		Gun.Angle -= RotationSpeed
+		DeltaAngle += RotationSpeed
+	} else if DeltaAngle < 0 && Gun.Angle < 45 && Gun.Angle > -135 {
+		Gun.Angle += RotationSpeed
+		DeltaAngle -= RotationSpeed
+	} else if Gun.Angle >= 45 {
+		Gun.Angle = 44.9
+	} else if Gun.Angle <= -135 {
+		Gun.Angle = -134.9
+	}
+
 	return Gun
 }
 
 func GunAnimationPlay(Car Car, Gun *Gun, SpriteXSpacing float32, dT float32, Frames int) {
 	switch Car.Weapon {
 	case Minigun:
-		rl.DrawTexturePro(Gun.TextureGun, rl.NewRectangle((42+SpriteXSpacing)* float32(Gun.Frames), 3, 42, 7), rl.NewRectangle(Gun.PosGun.X+85, Gun.PosGun.Y, 323, 70), rl.NewVector2(85, 30), Gun.Angle, rl.White)
+		rl.DrawTexturePro(Gun.TextureGun, rl.NewRectangle((42+SpriteXSpacing)*float32(Gun.Frames), 3, 42, 7), rl.NewRectangle(Gun.PosGun.X+85, Gun.PosGun.Y, 323, 70), rl.NewVector2(85, 30), Gun.Angle, rl.White)
 	}
 
-	Gun.Frames ++
+	Gun.Frames++
 	if Gun.Frames >= Frames+1 {
 		Gun.Frames = 0
 	}
 }
 
+func MiniGunShoot(Car Car, Gun Gun, MGBullets []Bullets, ShootDelay float32, dT float32) []Bullets {
+	if Car.Weapon == Minigun {
+		if ShotDelay <= 0 {
+			// BulletPos := Gun.PosGun.Add(rl.NewVector2(323+0, -25))
+			BulletPos := rl.NewVector2(Gun.PosGun.X+(323)* float32(math.Cos(float64(Gun.Angle))), Gun.PosGun.Y-25+(323)* float32(math.Sin(float64(Gun.Angle))))
+			MGBullets = append(MGBullets, Bullets{Pos: BulletPos, Type: Minigun, Damage: 20, BulletTime: 10.0, Angle: Gun.Angle, Rect: rl.NewRectangle(BulletPos.X, BulletPos.Y, 100, 100)})
+		}
+		for i := 0; i < len(MGBullets); i++ {
+			if MGBullets[i].BulletTime <= 0 {
+				MGBullets[i] = MGBullets[len(MGBullets)-1]
+				MGBullets = MGBullets[:len(MGBullets)-1]
+			} else {
+				MGBullets[i].BulletTime -= dT
+			}
+		}
+		// if ShotDelay <= 0 {
+		// 	ShotDelay = ShootDelay
+		// } else {
+		// 	ShotDelay -= dT
+		// }
+	}
+	return MGBullets
+}
+
 func WheelAnimationPlayer(Car *Car, SpriteXSpacing float32, dT float32, Frames int) {
-	switch Car.Car{
+	switch Car.Car {
 	case Car1:
-		rl.DrawRectanglePro(rl.NewRectangle(Car.Pos.X+200, Car.Pos.Y+155, 676, 100), rl.NewVector2(0,0), 0.0, rl.Black)
-		rl.DrawTexturePro(Car.WheelTexture, rl.NewRectangle((29+SpriteXSpacing)* float32(Car.Frames), 0, 29, 27), rl.NewRectangle(Car.Pos.X + 214, Car.Pos.Y + 170, 140, 130), rl.NewVector2(0,0), 0.0, rl.White)
-		rl.DrawTexturePro(Car.WheelTexture, rl.NewRectangle((29+SpriteXSpacing)* float32(Car.Frames), 0, 29, 27), rl.NewRectangle(Car.Pos.X + 723, Car.Pos.Y + 170, 140, 130), rl.NewVector2(0,0), 0.0, rl.White)
+		rl.DrawRectanglePro(rl.NewRectangle(Car.Pos.X+200, Car.Pos.Y+155, 676, 100), rl.NewVector2(0, 0), 0.0, rl.Black)
+		rl.DrawTexturePro(Car.WheelTexture, rl.NewRectangle((29+SpriteXSpacing)*float32(Car.Frames), 0, 29, 27), rl.NewRectangle(Car.Pos.X+214, Car.Pos.Y+170, 140, 130), rl.NewVector2(0, 0), 0.0, rl.White)
+		rl.DrawTexturePro(Car.WheelTexture, rl.NewRectangle((29+SpriteXSpacing)*float32(Car.Frames), 0, 29, 27), rl.NewRectangle(Car.Pos.X+723, Car.Pos.Y+170, 140, 130), rl.NewVector2(0, 0), 0.0, rl.White)
 	case Car2:
-		rl.DrawTexturePro(Car.WheelTexture, rl.NewRectangle((29+SpriteXSpacing)* float32(Car.Frames),0,0,0), rl.NewRectangle(0,0,0,0), rl.NewVector2(0,0), 0.0, rl.White)
-		rl.DrawTexturePro(Car.WheelTexture, rl.NewRectangle((29+SpriteXSpacing)* float32(Car.Frames),0,0,0), rl.NewRectangle(0,0,0,0), rl.NewVector2(0,0), 0.0, rl.White)
+		rl.DrawTexturePro(Car.WheelTexture, rl.NewRectangle((29+SpriteXSpacing)*float32(Car.Frames), 0, 0, 0), rl.NewRectangle(0, 0, 0, 0), rl.NewVector2(0, 0), 0.0, rl.White)
+		rl.DrawTexturePro(Car.WheelTexture, rl.NewRectangle((29+SpriteXSpacing)*float32(Car.Frames), 0, 0, 0), rl.NewRectangle(0, 0, 0, 0), rl.NewVector2(0, 0), 0.0, rl.White)
 	case Car3:
-		rl.DrawTexturePro(Car.WheelTexture, rl.NewRectangle((29+SpriteXSpacing)* float32(Car.Frames),0,0,0), rl.NewRectangle(0,0,0,0), rl.NewVector2(0,0), 0.0, rl.White)
-		rl.DrawTexturePro(Car.WheelTexture, rl.NewRectangle((29+SpriteXSpacing)* float32(Car.Frames),0,0,0), rl.NewRectangle(0,0,0,0), rl.NewVector2(0,0), 0.0, rl.White)
+		rl.DrawTexturePro(Car.WheelTexture, rl.NewRectangle((29+SpriteXSpacing)*float32(Car.Frames), 0, 0, 0), rl.NewRectangle(0, 0, 0, 0), rl.NewVector2(0, 0), 0.0, rl.White)
+		rl.DrawTexturePro(Car.WheelTexture, rl.NewRectangle((29+SpriteXSpacing)*float32(Car.Frames), 0, 0, 0), rl.NewRectangle(0, 0, 0, 0), rl.NewVector2(0, 0), 0.0, rl.White)
 	}
 
-	Car.Frames ++ 
+	Car.Frames++
 	if Car.Frames >= Frames+1 {
 		Car.Frames = 0
 	}
