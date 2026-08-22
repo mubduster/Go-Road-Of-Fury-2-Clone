@@ -85,7 +85,9 @@ var dT float32
 var RotationSpeed float32
 var Car1Wheel rl.Texture2D
 var Car1Bullets []Bullets
-var ShotDelay float32
+var Car2Bullets []Bullets
+var Car3Bullets []Bullets
+var MGShotDelay float32
 
 const (
 	Car1 = iota + 1
@@ -162,9 +164,9 @@ func main() {
 		{Pos: rl.NewVector2(World.X-3000, 0), Texture: CloudTexture},
 	}
 
-	Car1 := Car{Pos: rl.NewVector2(-694, World.Y-2200), Texture: Car1_Texture, Health: 600, Power: Nulifier, PowerTime: 10, PowerCooldown: 0.0, Weapon: Minigun, Scale: 5, OffsetSpeed: 1, WheelTexture: Car1Wheel, Frames: 4, Car: Car1}
-	Car2 := Car{Pos: rl.NewVector2(-394, World.Y-2200), Texture: Car1_Texture, Health: 600, Power: Sat, PowerTime: 10, PowerCooldown: 0.0, Weapon: Minigun, Scale: 5, OffsetSpeed: 1.5}
-	Car3 := Car{Pos: rl.NewVector2(-194, World.Y-2200), Texture: Car1_Texture, Health: 600, Power: Emp, PowerTime: 10, PowerCooldown: 0.0, Weapon: Minigun, Scale: 5, OffsetSpeed: 5}
+	Car1 := Car{Pos: rl.NewVector2(-694, World.Y-2100), Texture: Car1_Texture, Health: 600, Power: Nulifier, PowerTime: 10, PowerCooldown: 0.0, Weapon: Minigun, Scale: 5, OffsetSpeed: 1, WheelTexture: Car1Wheel, Frames: 4, Car: Car1}
+	Car2 := Car{Pos: rl.NewVector2(-394, World.Y-2100), Texture: Car1_Texture, Health: 600, Power: Sat, PowerTime: 10, PowerCooldown: 0.0, Weapon: Minigun, Scale: 5, OffsetSpeed: 1.5}
+	Car3 := Car{Pos: rl.NewVector2(-194, World.Y-2100), Texture: Car1_Texture, Health: 600, Power: Emp, PowerTime: 10, PowerCooldown: 0.0, Weapon: Minigun, Scale: 5, OffsetSpeed: 5}
 
 	Gun1 := Gun{PosBody: rl.NewVector2(Car1.Pos.X+300, World.Y-3000), PosGun: rl.NewVector2(Car1.Pos.X+300-(16*3), World.Y-2350), Angle: float32(GunAngle), TextureBody: MiniGunBody, TextureGun: MiniGunTexture, Frames: 0}
 	Gun2 := Gun{PosBody: rl.NewVector2(Car2.Pos.X+300, World.Y-3000), PosGun: rl.NewVector2(Car2.Pos.X+300-(16*3), World.Y-2350), Angle: float32(GunAngle), TextureBody: MiniGunBody, TextureGun: MiniGunTexture, Frames: 0}
@@ -243,7 +245,13 @@ func main() {
 
 		Clouds = CreateClouds(Clouds, CloudTexture, RoadSpeed, World) // BROKEN STUFF AAAAHHHHH
 
-		Car1Bullets = MiniGunShoot(Car1, Gun1, Car1Bullets, 5, dT)
+		Car1Bullets = MiniGunShoot(Car1, Gun1, Car1Bullets, 0.1, dT)
+		Car2Bullets = MiniGunShoot(Car2, Gun2, Car2Bullets, 0.1, dT)
+		Car3Bullets = MiniGunShoot(Car3, Gun3, Car3Bullets, 0.1, dT)
+
+		MoveMGBullets(Car1Bullets, World)
+		MoveMGBullets(Car2Bullets, World)
+		MoveMGBullets(Car3Bullets, World)
 
 		// Begin Rendering ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 		rl.BeginDrawing()
@@ -255,7 +263,7 @@ func main() {
 		// Background ---------------------------------------------------------------------------------------------------------------------
 		DrawGround(Skys, SkyOffset)
 
-		DrawClouds(Clouds) // <--------------------------------------------------------------------------- FIX CLOUDS PLZ ---------------------------------------------------------------------------------------------------------
+		DrawClouds(Clouds) // <--------------------------------------------------------------------------- FIX CLOUDS ---------------------------------------------------------------------------------------------------------
 		DrawGround(Background3s, BG3Offset)
 
 		DrawGround(Background2s, BG2Offset)
@@ -283,6 +291,12 @@ func main() {
 
 		for i := range Car1Bullets {
 			rl.DrawRectanglePro(rl.NewRectangle(Car1Bullets[i].Rect.X, Car1Bullets[i].Rect.Y, Car1Bullets[i].Rect.Width, Car1Bullets[i].Rect.Height), rl.NewVector2(0, 0), Car1Bullets[i].Angle, rl.Yellow)
+		}
+		for i := range Car2Bullets {	
+			rl.DrawRectanglePro(rl.NewRectangle(Car2Bullets[i].Rect.X, Car2Bullets[i].Rect.Y, Car2Bullets[i].Rect.Width, Car2Bullets[i].Rect.Height), rl.NewVector2(0, 0), Car2Bullets[i].Angle, rl.Yellow)
+		}
+		for i:= range Car3Bullets {
+			rl.DrawRectanglePro(rl.NewRectangle(Car3Bullets[i].Rect.X, Car3Bullets[i].Rect.Y, Car3Bullets[i].Rect.Width, Car3Bullets[i].Rect.Height), rl.NewVector2(0, 0), Car3Bullets[i].Angle, rl.Yellow)
 		}
 
 		rl.EndMode2D()
@@ -430,8 +444,10 @@ func GunFollow(Mouse rl.Vector2, Gun Gun, Car Car) Gun {
 		DeltaAngle -= RotationSpeed
 	} else if Gun.Angle >= 45 {
 		Gun.Angle = 44.9
+		GunAngle = 45
 	} else if Gun.Angle <= -135 {
 		Gun.Angle = -134.9
+		GunAngle = -135
 	}
 
 	return Gun
@@ -451,26 +467,51 @@ func GunAnimationPlay(Car Car, Gun *Gun, SpriteXSpacing float32, dT float32, Fra
 
 func MiniGunShoot(Car Car, Gun Gun, MGBullets []Bullets, ShootDelay float32, dT float32) []Bullets {
 	if Car.Weapon == Minigun {
-		if ShotDelay <= 0 {
-			// BulletPos := Gun.PosGun.Add(rl.NewVector2(323+0, -25))
-			BulletPos := rl.NewVector2(Gun.PosGun.X+(323)* float32(math.Cos(float64(Gun.Angle))), Gun.PosGun.Y-25+(323)* float32(math.Sin(float64(Gun.Angle))))
-			MGBullets = append(MGBullets, Bullets{Pos: BulletPos, Type: Minigun, Damage: 20, BulletTime: 10.0, Angle: Gun.Angle, Rect: rl.NewRectangle(BulletPos.X, BulletPos.Y, 100, 100)})
+		if MGShotDelay <= 0 {
+			Pivot := rl.NewVector2(Gun.PosGun.X+85, Gun.PosGun.Y)
+
+			LocalD := rl.NewVector2(323-95, -30)
+			WorldD := rl.NewVector2(
+				LocalD.X*float32(math.Cos(float64(Gun.Angle/180)*math.Pi))-LocalD.Y*float32(math.Sin(float64(Gun.Angle/180)*math.Pi)),
+				LocalD.X*float32(math.Sin(float64(Gun.Angle/180)*math.Pi))+LocalD.Y*float32(math.Cos(float64(Gun.Angle/180)*math.Pi)),
+			)
+
+			BulletPos := rl.NewVector2(Pivot.X+WorldD.X, Pivot.Y+WorldD.Y)
+			MGBullets = append(MGBullets, Bullets{Pos: BulletPos, Type: Minigun, Damage: 20, BulletTime: Car1Minigun.BulletTime, Angle: Gun.Angle, Rect: rl.NewRectangle(BulletPos.X, BulletPos.Y, 20, 15)})
 		}
 		for i := 0; i < len(MGBullets); i++ {
 			if MGBullets[i].BulletTime <= 0 {
-				MGBullets[i] = MGBullets[len(MGBullets)-1]
-				MGBullets = MGBullets[:len(MGBullets)-1]
+				DeleteBullet(&MGBullets, i)
 			} else {
 				MGBullets[i].BulletTime -= dT
 			}
 		}
-		// if ShotDelay <= 0 {
-		// 	ShotDelay = ShootDelay
-		// } else {
-		// 	ShotDelay -= dT
-		// }
+		if MGShotDelay <= 0 {
+			MGShotDelay = ShootDelay
+		} else {
+			MGShotDelay -= dT
+		}
 	}
 	return MGBullets
+}
+
+func MoveMGBullets (Bullets []Bullets, World World) {
+		for i := 0; i<len(Bullets); i++ {
+			if Bullets[i].Type == Minigun {
+				Bullets[i].Rect.X += float32(math.Cos(float64(Bullets[i].Angle/180)*math.Pi))*100 
+				Bullets[i].Rect.Y += float32(math.Sin(float64(Bullets[i].Angle/180))*math.Pi)*100
+			}
+
+			if Bullets[i].Rect.Y >= World.Y-1800 {
+				DeleteBullet(&Bullets, i)
+			} 
+		}
+
+} 
+
+func DeleteBullet(Bullets *[]Bullets, i int) {
+	(*Bullets)[i] = (*Bullets)[len(*Bullets)-1]
+	*Bullets = (*Bullets)[:len(*Bullets)-1]
 }
 
 func WheelAnimationPlayer(Car *Car, SpriteXSpacing float32, dT float32, Frames int) {

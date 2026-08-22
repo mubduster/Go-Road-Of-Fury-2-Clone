@@ -7,6 +7,7 @@ type GunPos struct {
 	GunGun        rl.Vector2
 	Scale         float32
 	RotationSpeed float32
+	BulletTime float32
 }
 
 const (
@@ -20,4 +21,5 @@ var Car1Minigun GunPos = GunPos{
 	GunGun:        rl.NewVector2(375, -120),
 	Scale:         7,
 	RotationSpeed: 1,
+	BulletTime: 2,
 }
