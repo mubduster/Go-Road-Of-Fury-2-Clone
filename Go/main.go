@@ -65,6 +65,12 @@ type Bullets struct {
 	Angle      float32
 	Rect       rl.Rectangle
 }
+type Enemy struct {
+	Type int 
+	Pos rl.Vector2
+	Health float32
+	
+}
 
 var RoadSpeed float32 = 200
 var Timer float32
