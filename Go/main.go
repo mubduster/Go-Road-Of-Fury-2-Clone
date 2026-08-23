@@ -251,13 +251,17 @@ func main() {
 
 		Clouds = CreateClouds(Clouds, CloudTexture, RoadSpeed, World) // BROKEN STUFF AAAAHHHHH
 
+		// creates and spawns Bullets for the Minigun -------------------------------
 		Car1Bullets = MiniGunShoot(Car1, Gun1, Car1Bullets, 0.1, dT)
 		Car2Bullets = MiniGunShoot(Car2, Gun2, Car2Bullets, 0.1, dT)
 		Car3Bullets = MiniGunShoot(Car3, Gun3, Car3Bullets, 0.1, dT)
+		//---------------------------------------------------------------------------
 
+		// Makes the bullets move ---------------------------
 		MoveMGBullets(Car1Bullets, World)
 		MoveMGBullets(Car2Bullets, World)
 		MoveMGBullets(Car3Bullets, World)
+		//---------------------------------------------------
 
 		// Begin Rendering ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 		rl.BeginDrawing()
@@ -459,6 +463,7 @@ func GunFollow(Mouse rl.Vector2, Gun Gun, Car Car) Gun {
 	return Gun
 }
 
+// Plays the Gun Animation from a SpriteSheet
 func GunAnimationPlay(Car Car, Gun *Gun, SpriteXSpacing float32, dT float32, Frames int) {
 	switch Car.Weapon {
 	case Minigun:
@@ -471,6 +476,7 @@ func GunAnimationPlay(Car Car, Gun *Gun, SpriteXSpacing float32, dT float32, Fra
 	}
 }
 
+// Creates and shoots Minigun Bullets
 func MiniGunShoot(Car Car, Gun Gun, MGBullets []Bullets, ShootDelay float32, dT float32) []Bullets {
 	if Car.Weapon == Minigun {
 		if MGShotDelay <= 0 {
@@ -501,6 +507,7 @@ func MiniGunShoot(Car Car, Gun Gun, MGBullets []Bullets, ShootDelay float32, dT 
 	return MGBullets
 }
 
+// Makes the Bullets Move
 func MoveMGBullets (Bullets []Bullets, World World) {
 		for i := 0; i<len(Bullets); i++ {
 			if Bullets[i].Type == Minigun {
@@ -515,11 +522,13 @@ func MoveMGBullets (Bullets []Bullets, World World) {
 
 } 
 
+// Use to remove Bullets from Slice
 func DeleteBullet(Bullets *[]Bullets, i int) {
 	(*Bullets)[i] = (*Bullets)[len(*Bullets)-1]
 	*Bullets = (*Bullets)[:len(*Bullets)-1]
 }
 
+// Plays the Wheel Animation
 func WheelAnimationPlayer(Car *Car, SpriteXSpacing float32, dT float32, Frames int) {
 	switch Car.Car {
 	case Car1:
