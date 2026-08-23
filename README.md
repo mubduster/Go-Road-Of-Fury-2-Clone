@@ -7,7 +7,9 @@ This Project is a mere **"clone"** of the Game **Road Of Fury 2**, and all the a
 
 **This project is a WIP so it is not complete or close to complete at its current state.**
 
+![Game ScreenShot 1](https://github.com/mubduster/Go-Road-Of-Fury-2-Clone/blob/master/ScreenShots/SS1.png)
 
+![Game ScreenShot 2](https://github.com/mubduster/Go-Road-Of-Fury-2-Clone/blob/master/ScreenShots/SS2.png)
 
 ## How To Install?
 To download the game go to the [**Releases**](https://github.com/mubduster/Go-Road-Of-Fury-2-Clone/releases) tab on this GitHub repository and download the appropriate version of the game according to your Operating system, from the latest release.
