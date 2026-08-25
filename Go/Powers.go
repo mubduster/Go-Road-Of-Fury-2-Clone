@@ -1,7 +1,8 @@
 package main
 
 const (
-	Nulifier = iota
+	Nill = iota
+	Nulifier
 	Sat
 	Emp
 )
