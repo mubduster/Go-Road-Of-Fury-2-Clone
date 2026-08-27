@@ -183,14 +183,14 @@ func main() {
 	}
 
 	Car1 := Car{Type: PlayerCar, Pos: rl.NewVector2(-694, World.Y-2100), Texture: Car1_Texture, Health: 600, Power: Nulifier, PowerTime: 10, PowerCooldown: 0.0, Weapon: Minigun, Scale: 5, OffsetSpeed: 1, WheelTexture: Car1Wheel, Frames: 4, Car: Car1}
-	Car2 := Car{Type: PlayerCar, Pos: rl.NewVector2(-394, World.Y-2100), Texture: Car1_Texture, Health: 600, Power: Sat, PowerTime: 10, PowerCooldown: 0.0, Weapon: Minigun, Scale: 5, OffsetSpeed: 1.5, Car: Car2}
-	Car3 := Car{Type: PlayerCar, Pos: rl.NewVector2(-194, World.Y-2100), Texture: Car1_Texture, Health: 600, Power: Emp, PowerTime: 10, PowerCooldown: 0.0, Weapon: Minigun, Scale: 5, OffsetSpeed: 5, Car: Car3}
+	Car2 := Car{Type: PlayerCar, Pos: rl.NewVector2(-394, World.Y-2100), Texture: Car1_Texture, Health: 600, Power: Sat, PowerTime: 10, PowerCooldown: 0.0, Weapon: Minigun, Scale: 5, OffsetSpeed: 1.5, WheelTexture: Car1Wheel, Frames: 4, Car: Car2}
+	Car3 := Car{Type: PlayerCar, Pos: rl.NewVector2(-194, World.Y-2100), Texture: Car1_Texture, Health: 600, Power: Emp, PowerTime: 10, PowerCooldown: 0.0, Weapon: Minigun, Scale: 5, OffsetSpeed: 5, WheelTexture: Car1Wheel, Frames: 4, Car: Car3}
 
 	Gun1 := Gun{PosBody: rl.NewVector2(Car1.Pos.X+300, World.Y-3000), PosGun: rl.NewVector2(Car1.Pos.X+300-(16*3), World.Y-2350), Angle: float32(GunAngle), TextureBody: MiniGunBody, TextureGun: MiniGunTexture, Frames: 0}
 	Gun2 := Gun{PosBody: rl.NewVector2(Car2.Pos.X+300, World.Y-3000), PosGun: rl.NewVector2(Car2.Pos.X+300-(16*3), World.Y-2350), Angle: float32(GunAngle), TextureBody: MiniGunBody, TextureGun: MiniGunTexture, Frames: 0}
 	Gun3 := Gun{PosBody: rl.NewVector2(Car3.Pos.X+300, World.Y-3000), PosGun: rl.NewVector2(Car3.Pos.X+300-(16*3), World.Y-2350), Angle: float32(GunAngle), TextureBody: MiniGunBody, TextureGun: MiniGunTexture, Frames: 0}
 
-	Enemy := Car{Type: EnemyCar, Pos: rl.NewVector2(World.X+200, World.Y-2100), Texture: Car1_Texture, Health: 500, Power: Nill, PowerTime: 0, PowerCooldown: 0.0, Weapon: Minigun, Scale: 5, OffsetSpeed: 1, WheelTexture: Car1Wheel, Offset: false, Frames: 4}
+	Enemy := Car{Type: EnemyCar, Pos: rl.NewVector2(World.X+200, World.Y-2100), Texture: Car1_Texture, Health: 500, Power: Nill, PowerTime: 0, PowerCooldown: 0.0, Weapon: Minigun, Scale: 5, OffsetSpeed: 1, WheelTexture: Car1Wheel, Offset: false, Frames: 4, Car: 4}
 	GunEnemy := Gun{PosBody: rl.NewVector2(Enemy.Pos.X+300, Enemy.Pos.Y-3000), PosGun: rl.NewVector2(Enemy.Pos.X+20, Enemy.Pos.Y-3350), Angle: 180, TextureBody: MiniGunBody, TextureGun: FlippedMG, Frames: 0}
 	//-------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -213,7 +213,7 @@ func main() {
 		Gun2 = GunFollow(WorldMouse, Gun2, Car2)
 		Gun3 = GunFollow(WorldMouse, Gun3, Car3)
 
-		Player := make([]Car, 3, 3)
+		Player := make([]Car ,3)
 		Player = append(Player, Car1)
 		Player = append(Player, Car2)
 		Player = append(Player, Car3)
@@ -277,17 +277,17 @@ func main() {
 		Clouds = CreateClouds(Clouds, CloudTexture, RoadSpeed, World) // BROKEN STUFF AAAAHHHHH
 
 		// creates and spawns Bullets for the Minigun -------------------------------
-		CarBullets = MiniGunShoot(Car1, Gun1, CarBullets, 0.1, dT)
-		CarBullets = MiniGunShoot(Car2, Gun2, CarBullets, 0.1, dT)
-		CarBullets = MiniGunShoot(Car3, Gun3, CarBullets, 0.1, dT)
+		CarBullets = MiniGunShoot(Car1, Gun1, CarBullets, 0.085, dT)
+		CarBullets = MiniGunShoot(Car2, Gun2, CarBullets, 0.085, dT)
+		CarBullets = MiniGunShoot(Car3, Gun3, CarBullets, 0.085, dT)
 
 		EnemyBullets = MiniGunShoot(Enemy, GunEnemy, EnemyBullets, 0.1, dT)
 		//---------------------------------------------------------------------------
 
 		// Makes the bullets move ---------------------------
-		MoveMGBullets(CarBullets, World)
+		go MoveMGBullets(&CarBullets, World)
 
-		MoveMGBullets(EnemyBullets, World)
+		go MoveMGBullets(&EnemyBullets, World)
 		//---------------------------------------------------
 
 		for i := 0; i < len(CarBullets); i++ {
@@ -323,28 +323,32 @@ func main() {
 
 		DrawGround(Roads, Offset) // Render Road
 
-		WheelAnimationPlayer(&Car1, 10, dT, 0)
+		WheelAnimationPlayer(&Car1, 10, dT, 1)
 		rl.DrawTextureEx(Car1.Texture, Car1.Pos, 0.0, Car1.Scale, rl.White) // Render Car 1
 		GunAnimationPlay(Car1, &Gun1, 8, dT, 3)
-		// rl.DrawTexturePro(Gun1.TextureGun, rl.NewRectangle(0, 0, 39, 7), rl.NewRectangle(Gun1.PosGun.X+85, Gun1.PosGun.Y, 300, 70), rl.NewVector2(85, 30), Gun1.Angle, rl.White)
 		rl.DrawTextureEx(Gun1.TextureBody, Gun1.PosBody, 0.0, Car1Minigun.Scale, rl.White)
 
+		WheelAnimationPlayer(&Car2, 10, dT, 1)
 		rl.DrawTextureEx(Car2.Texture, Car2.Pos, 0.0, Car2.Scale, rl.White)
 		GunAnimationPlay(Car2, &Gun2, 8, dT, 3)
-		// rl.DrawTexturePro(Gun2.TextureGun, rl.NewRectangle(0, 0, 39, 7), rl.NewRectangle(Gun2.PosGun.X+85, Gun2.PosGun.Y, 300, 70), rl.NewVector2(85, 30), Gun2.Angle, rl.White)
 		rl.DrawTextureEx(Gun2.TextureBody, Gun2.PosBody, 0.0, Car1Minigun.Scale, rl.White)
 
+		WheelAnimationPlayer(&Car3, 10, dT, 1)
 		rl.DrawTextureEx(Car3.Texture, Car3.Pos, 0.0, Car3.Scale, rl.White)
 		GunAnimationPlay(Car3, &Gun3, 8, dT, 3)
-		// rl.DrawTexturePro(Gun3.TextureGun, rl.NewRectangle(0, 0, 39, 7), rl.NewRectangle(Gun3.PosGun.X+85, Gun3.PosGun.Y, 300, 70), rl.NewVector2(85,30), Gun3.Angle, rl.White)
 		rl.DrawTextureEx(Gun3.TextureBody, Gun3.PosBody, 0.0, Car1Minigun.Scale, rl.White)
 
+		WheelAnimationPlayer(&Enemy, 10, dT, 1)
 		rl.DrawTextureEx(Enemy.Texture, Enemy.Pos, 0.0, Enemy.Scale, rl.White)
 		FlippedGunAnimationPlay(Enemy, &GunEnemy, 8, dT, 3)
 		rl.DrawTextureEx(GunEnemy.TextureBody, GunEnemy.PosBody, 0.0, Car1Minigun.Scale, rl.White)
 
 		for i := range CarBullets {
 			rl.DrawRectanglePro(rl.NewRectangle(CarBullets[i].Rect.X, CarBullets[i].Rect.Y, CarBullets[i].Rect.Width, CarBullets[i].Rect.Height), rl.NewVector2(0, 0), CarBullets[i].Angle, rl.Yellow)
+		}
+
+		for i := range EnemyBullets {
+			rl.DrawRectanglePro(EnemyBullets[i].Rect, rl.NewVector2(EnemyBullets[i].Rect.Width,EnemyBullets[i].Rect.Height), EnemyBullets[i].Angle, rl.Yellow)
 		}
 
 		rl.EndMode2D()
@@ -525,7 +529,7 @@ func GunFollow(Mouse rl.Vector2, Gun Gun, Car Car) Gun {
 
 func EnemyGunFollow(Gun Gun, Car Car, Players []Car) Gun {
 	dx := float64((Players[len(Players)-1].Pos.X + 600) - (Gun.PosGun.X - 220))
-	dy := float64((Players[len(Players)-1].Pos.Y + 500) - Gun.PosGun.Y)
+	dy := float64((Players[len(Players)-1].Pos.Y + 300 - 300) - Gun.PosGun.Y)
 
 	GunAngle := math.Atan2(dy, dx) * 180 / math.Pi
 
@@ -607,7 +611,7 @@ func MiniGunShoot(Car Car, Gun Gun, MGBullets []Bullets, ShootDelay float32, dT 
 	} else {
 		if Car.Weapon == Minigun {
 			if MGShotDelay <= 0 {
-				Pivot := rl.NewVector2(Gun.PosGun.X+85, Gun.PosGun.Y)
+				Pivot := rl.NewVector2(Gun.PosGun.X+85, Gun.PosGun.Y-40)
 
 				LocalD := rl.NewVector2(323-95, -30)
 				WorldD := rl.NewVector2(
@@ -636,23 +640,23 @@ func MiniGunShoot(Car Car, Gun Gun, MGBullets []Bullets, ShootDelay float32, dT 
 }
 
 // Makes the Bullets Move
-func MoveMGBullets(Bullets []Bullets, World World) {
-	for i := 0; i < len(Bullets); i++ {
-		if Bullets[i].Type == Minigun {
-			Bullets[i].Rect.X += float32(math.Cos(float64(Bullets[i].Angle/180)*math.Pi)) * 100
-			Bullets[i].Rect.Y += float32(math.Sin(float64(Bullets[i].Angle/180))*math.Pi) * 100
+func MoveMGBullets(Bullets *[]Bullets, World World) {
+	for i := 0; i < len(*Bullets); i++ {
+		if (*Bullets)[i].Type == Minigun {
+			(*Bullets)[i].Rect.X += float32(math.Cos(float64((*Bullets)[i].Angle/180)*math.Pi)) * 100
+			(*Bullets)[i].Rect.Y += float32(math.Sin(float64((*Bullets)[i].Angle/180)*math.Pi)) * 100
 		}
 
-		if Bullets[i].Rect.Y >= World.Y-1800 {
-			DeleteBullet(&Bullets, i)
+		if (*Bullets)[i].Rect.Y >= World.Y-1800 {
+			DeleteBullet(&(*Bullets), i)
 		}
 	}
 }
 
 // Use to remove Bullets from Slice
-func DeleteBullet(Bullets *[]Bullets, i int) {
-	(*Bullets)[i] = (*Bullets)[len(*Bullets)-1]
-	*Bullets = (*Bullets)[:len(*Bullets)-1]
+func DeleteBullet(BulletsList *[]Bullets, i int) {
+	(*BulletsList)[i] = (*BulletsList)[len(*BulletsList)-1]
+	*BulletsList = (*BulletsList)[:len(*BulletsList)-1]
 }
 
 // Plays the Wheel Animation
@@ -663,11 +667,14 @@ func WheelAnimationPlayer(Car *Car, SpriteXSpacing float32, dT float32, Frames i
 		rl.DrawTexturePro(Car.WheelTexture, rl.NewRectangle((29+SpriteXSpacing)*float32(Car.Frames), 0, 29, 27), rl.NewRectangle(Car.Pos.X+214, Car.Pos.Y+170, 140, 130), rl.NewVector2(0, 0), 0.0, rl.White)
 		rl.DrawTexturePro(Car.WheelTexture, rl.NewRectangle((29+SpriteXSpacing)*float32(Car.Frames), 0, 29, 27), rl.NewRectangle(Car.Pos.X+723, Car.Pos.Y+170, 140, 130), rl.NewVector2(0, 0), 0.0, rl.White)
 	case Car2:
-		rl.DrawTexturePro(Car.WheelTexture, rl.NewRectangle((29+SpriteXSpacing)*float32(Car.Frames), 0, 0, 0), rl.NewRectangle(0, 0, 0, 0), rl.NewVector2(0, 0), 0.0, rl.White)
-		rl.DrawTexturePro(Car.WheelTexture, rl.NewRectangle((29+SpriteXSpacing)*float32(Car.Frames), 0, 0, 0), rl.NewRectangle(0, 0, 0, 0), rl.NewVector2(0, 0), 0.0, rl.White)
+		rl.DrawTexturePro(Car.WheelTexture, rl.NewRectangle((29+SpriteXSpacing)*float32(Car.Frames), 0, 29, 27), rl.NewRectangle(Car.Pos.X+214, Car.Pos.Y+170, 140, 130), rl.NewVector2(0, 0), 0.0, rl.White)
+		rl.DrawTexturePro(Car.WheelTexture, rl.NewRectangle((29+SpriteXSpacing)*float32(Car.Frames), 0, 29, 27), rl.NewRectangle(Car.Pos.X+723, Car.Pos.Y+170, 140, 130), rl.NewVector2(0, 0), 0.0, rl.White)
 	case Car3:
-		rl.DrawTexturePro(Car.WheelTexture, rl.NewRectangle((29+SpriteXSpacing)*float32(Car.Frames), 0, 0, 0), rl.NewRectangle(0, 0, 0, 0), rl.NewVector2(0, 0), 0.0, rl.White)
-		rl.DrawTexturePro(Car.WheelTexture, rl.NewRectangle((29+SpriteXSpacing)*float32(Car.Frames), 0, 0, 0), rl.NewRectangle(0, 0, 0, 0), rl.NewVector2(0, 0), 0.0, rl.White)
+		rl.DrawTexturePro(Car.WheelTexture, rl.NewRectangle((29+SpriteXSpacing)*float32(Car.Frames), 0, 29, 27), rl.NewRectangle(Car.Pos.X+214, Car.Pos.Y+170, 140, 130), rl.NewVector2(0, 0), 0.0, rl.White)
+		rl.DrawTexturePro(Car.WheelTexture, rl.NewRectangle((29+SpriteXSpacing)*float32(Car.Frames), 0, 29, 27), rl.NewRectangle(Car.Pos.X+723, Car.Pos.Y+170, 140, 130), rl.NewVector2(0, 0), 0.0, rl.White)
+	case 4:
+		rl.DrawTexturePro(Car.WheelTexture, rl.NewRectangle((29+SpriteXSpacing)*float32(Car.Frames), 0, 29, 27), rl.NewRectangle(Car.Pos.X+214, Car.Pos.Y+170, 140, 130), rl.NewVector2(0, 0), 0.0, rl.White)
+		rl.DrawTexturePro(Car.WheelTexture, rl.NewRectangle((29+SpriteXSpacing)*float32(Car.Frames), 0, 29, 27), rl.NewRectangle(Car.Pos.X+723, Car.Pos.Y+170, 140, 130), rl.NewVector2(0, 0), 0.0, rl.White)
 	}
 
 	Car.Frames++
