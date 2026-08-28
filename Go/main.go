@@ -38,6 +38,7 @@ type Gun struct {
 	Angle       float32
 	TextureBody rl.Texture2D
 	TextureGun  rl.Texture2D
+	ShootDelay float32
 	Frames      int
 	AniTime     float32
 }
@@ -98,7 +99,7 @@ var RotationSpeed float32
 var Car1Wheel rl.Texture2D
 var CarBullets []Bullets
 var EnemyBullets []Bullets
-var MGShotDelay float32
+
 
 const (
 	Car1 = iota + 1
@@ -184,7 +185,7 @@ func main() {
 
 	Car1 := Car{Type: PlayerCar, Pos: rl.NewVector2(-694, World.Y-2100), Texture: Car1_Texture, Health: 600, Power: Nulifier, PowerTime: 10, PowerCooldown: 0.0, Weapon: Minigun, Scale: 5, OffsetSpeed: 1, WheelTexture: Car1Wheel, Frames: 4, Car: Car1}
 	Car2 := Car{Type: PlayerCar, Pos: rl.NewVector2(-394, World.Y-2100), Texture: Car1_Texture, Health: 600, Power: Sat, PowerTime: 10, PowerCooldown: 0.0, Weapon: Minigun, Scale: 5, OffsetSpeed: 1.5, WheelTexture: Car1Wheel, Frames: 4, Car: Car2}
-	Car3 := Car{Type: PlayerCar, Pos: rl.NewVector2(-194, World.Y-2100), Texture: Car1_Texture, Health: 600, Power: Emp, PowerTime: 10, PowerCooldown: 0.0, Weapon: Minigun, Scale: 5, OffsetSpeed: 5, WheelTexture: Car1Wheel, Frames: 4, Car: Car3}
+	Car3 := Car{Type: PlayerCar, Pos: rl.NewVector2(-194, World.Y-2100), Texture: Car1_Texture, Health: 50, Power: Emp, PowerTime: 10, PowerCooldown: 0.0, Weapon: Minigun, Scale: 5, OffsetSpeed: 5, WheelTexture: Car1Wheel, Frames: 4, Car: Car3}
 
 	Gun1 := Gun{PosBody: rl.NewVector2(Car1.Pos.X+300, World.Y-3000), PosGun: rl.NewVector2(Car1.Pos.X+300-(16*3), World.Y-2350), Angle: float32(GunAngle), TextureBody: MiniGunBody, TextureGun: MiniGunTexture, Frames: 0}
 	Gun2 := Gun{PosBody: rl.NewVector2(Car2.Pos.X+300, World.Y-3000), PosGun: rl.NewVector2(Car2.Pos.X+300-(16*3), World.Y-2350), Angle: float32(GunAngle), TextureBody: MiniGunBody, TextureGun: MiniGunTexture, Frames: 0}
@@ -277,11 +278,11 @@ func main() {
 		Clouds = CreateClouds(Clouds, CloudTexture, RoadSpeed, World) // BROKEN STUFF AAAAHHHHH
 
 		// creates and spawns Bullets for the Minigun -------------------------------
-		CarBullets = MiniGunShoot(Car1, Gun1, CarBullets, 0.085, dT)
-		CarBullets = MiniGunShoot(Car2, Gun2, CarBullets, 0.085, dT)
-		CarBullets = MiniGunShoot(Car3, Gun3, CarBullets, 0.085, dT)
+		CarBullets = MiniGunShoot(Car1, &Gun1, CarBullets, 0.082, dT)
+		CarBullets = MiniGunShoot(Car2, &Gun2, CarBullets, 0.082, dT)
+		CarBullets = MiniGunShoot(Car3, &Gun3, CarBullets, 0.082, dT)
 
-		EnemyBullets = MiniGunShoot(Enemy, GunEnemy, EnemyBullets, 0.1, dT)
+	    EnemyBullets = MiniGunShoot(Enemy, &GunEnemy, EnemyBullets, 0.07, dT)
 		//---------------------------------------------------------------------------
 
 		// Makes the bullets move ---------------------------
@@ -290,17 +291,50 @@ func main() {
 		go MoveMGBullets(&EnemyBullets, World)
 		//---------------------------------------------------
 
+		for i := 0; i < len(EnemyBullets); i++{
+			if rl.CheckCollisionRecs(EnemyBullets[i].Rect, rl.NewRectangle(Car1.Pos.X, Car1.Pos.Y, 300, 300)) {
+				Car1.Health -= EnemyBullets[i].Damage
+				DeleteBullet(&EnemyBullets, i)
+				i--
+				continue
+			}
+			if rl.CheckCollisionRecs(EnemyBullets[i].Rect, rl.NewRectangle(Car2.Pos.X, Car2.Pos.Y, 300, 300)) {
+				Car2.Health -= EnemyBullets[i].Damage
+				DeleteBullet(&EnemyBullets, i)
+				i--
+				continue
+			}
+			if rl.CheckCollisionRecs(EnemyBullets[i].Rect, rl.NewRectangle(Car3.Pos.X, Car3.Pos.Y, 300, 300)) {
+				Car3.Health -= EnemyBullets[i].Damage
+				DeleteBullet(&EnemyBullets, i)
+				i--
+				continue
+			}
+		}
+
 		for i := 0; i < len(CarBullets); i++ {
 			if rl.CheckCollisionRecs(CarBullets[i].Rect, rl.NewRectangle(Enemy.Pos.X, Enemy.Pos.Y, 300, 300)) {
 				Enemy.Health -= CarBullets[i].Damage
-				CarBullets[i] = CarBullets[len(CarBullets)-1]
-				CarBullets = CarBullets[:len(CarBullets)-1]
+				DeleteBullet(&CarBullets, i)
 			}
 		}
 
 		if Enemy.Health <= 0 {
 			Enemy = Car{}
 			GunEnemy = Gun{}
+		}
+
+		if Car1.Health <= 0 {
+			Car1 = Car{}
+			Gun1 = Gun{}
+		}
+		if Car2.Health <= 0 {
+			Car2 = Car{}
+			Gun2 = Gun{}
+		}
+		if Car3.Health <= 0 {
+			Car3 = Car{}
+			Gun3 = Gun{}
 		}
 
 		// Begin Rendering ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -343,11 +377,11 @@ func main() {
 		FlippedGunAnimationPlay(Enemy, &GunEnemy, 8, dT, 3)
 		rl.DrawTextureEx(GunEnemy.TextureBody, GunEnemy.PosBody, 0.0, Car1Minigun.Scale, rl.White)
 
-		for i := range CarBullets {
+		for i := 0; i<len(CarBullets); i++ {
 			rl.DrawRectanglePro(rl.NewRectangle(CarBullets[i].Rect.X, CarBullets[i].Rect.Y, CarBullets[i].Rect.Width, CarBullets[i].Rect.Height), rl.NewVector2(0, 0), CarBullets[i].Angle, rl.Yellow)
 		}
 
-		for i := range EnemyBullets {
+		for i := 0; i <len(EnemyBullets); i++ {
 			rl.DrawRectanglePro(EnemyBullets[i].Rect, rl.NewVector2(EnemyBullets[i].Rect.Width,EnemyBullets[i].Rect.Height), EnemyBullets[i].Angle, rl.Yellow)
 		}
 
@@ -580,10 +614,10 @@ func FlippedGunAnimationPlay(Car Car, Gun *Gun, SpriteXSpacing float32, dT float
 }
 
 // Creates and shoots Minigun Bullets
-func MiniGunShoot(Car Car, Gun Gun, MGBullets []Bullets, ShootDelay float32, dT float32) []Bullets {
+func MiniGunShoot(Car Car, Gun *Gun, MGBullets []Bullets, ShootDelay float32, dT float32) []Bullets {
 	if Car.Type == PlayerCar {
 		if Car.Weapon == Minigun {
-			if MGShotDelay <= 0 {
+			if Gun.ShootDelay <= 0 {
 				Pivot := rl.NewVector2(Gun.PosGun.X+85, Gun.PosGun.Y)
 
 				LocalD := rl.NewVector2(323-95, -30)
@@ -602,15 +636,15 @@ func MiniGunShoot(Car Car, Gun Gun, MGBullets []Bullets, ShootDelay float32, dT 
 					MGBullets[i].BulletTime -= dT
 				}
 			}
-			if MGShotDelay <= 0 {
-				MGShotDelay = ShootDelay
+			if Gun.ShootDelay <= 0 {
+				Gun.ShootDelay = ShootDelay
 			} else {
-				MGShotDelay -= dT
+				Gun.ShootDelay -= dT
 			}
 		}
 	} else {
 		if Car.Weapon == Minigun {
-			if MGShotDelay <= 0 {
+			if Gun.ShootDelay <= 0 {
 				Pivot := rl.NewVector2(Gun.PosGun.X+85, Gun.PosGun.Y-40)
 
 				LocalD := rl.NewVector2(323-95, -30)
@@ -629,10 +663,10 @@ func MiniGunShoot(Car Car, Gun Gun, MGBullets []Bullets, ShootDelay float32, dT 
 					MGBullets[i].BulletTime -= dT
 				}
 			}
-			if MGShotDelay <= 0 {
-				MGShotDelay = ShootDelay
+			if Gun.ShootDelay <= 0 {
+				Gun.ShootDelay = ShootDelay
 			} else {
-				MGShotDelay -= dT
+				Gun.ShootDelay -= dT
 			}
 		}
 	}
